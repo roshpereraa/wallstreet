@@ -1,0 +1,13 @@
+{
+  "name": "wallstreet",
+  "version": "1.0.0",
+  "description": "Wall St. — walk down a 3D Wall Street, step onto trading floors and open any trader's laptop for live market data.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

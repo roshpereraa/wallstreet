@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c10">
+  <meta name="description" content="Walk down a 3D Wall Street, step onto the trading floors and open any trader's laptop for live stock market data.">
+  <title>Wall St.</title>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Wall St.">
+  <meta property="og:description" content="Walk down a 3D Wall Street, step onto the trading floors and open any trader's laptop for live stock market data.">
+  <meta property="og:image" content="/favicon.svg">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" crossorigin>
+</head>
+<body>
+  <canvas id="scene" aria-label="Wall Street, an interactive 3D scene"></canvas>
+
+  <div id="hud">
+    <div id="place"></div>
+    <nav id="dock" aria-label="Actions"></nav>
+    <div id="tape" aria-label="Live indices"></div>
+  </div>
+  <div id="hint" hidden></div>
+  <button id="prompt" hidden></button>
+  <div id="toast" hidden role="status"></div>
+  <div id="fade"></div>
+
+  <div id="help" hidden role="dialog" aria-label="Controls">
+    <div class="help-card">
+      <header><h2>How to explore</h2><button data-close aria-label="Close">✕</button></header>
+      <ul class="help-taps">
+        <li><b>Buildings</b> click one to walk in (or press E at the door)</li>
+        <li><b>Laptops</b> click any trader's laptop for live markets</li>
+        <li><b>The Exchange</b> / wall boards open a market overview</li>
+        <li><b>The bull</b> tells you how the S&amp;P is doing</li>
+        <li><b>Ground</b> click or tap to walk there</li>
+      </ul>
+      <h3>Keyboard</h3>
+      <dl class="keys">
+        <dt>WASD / Arrows</dt><dd>walk</dd>
+        <dt>Shift</dt><dd>run</dd>
+        <dt>Drag / Wheel</dt><dd>look around / zoom</dd>
+        <dt>E</dt><dd>enter · open laptop</dd>
+        <dt>Q</dt><dd>market overview</dd>
+        <dt>M</dt><dd>sound</dd>
+        <dt>Esc</dt><dd>close laptop · back to street</dd>
+        <dt>/</dt><dd>search tickers (in a laptop)</dd>
+      </dl>
+      <p class="help-note">Market data from Yahoo Finance, served through this site's API. Quotes may be delayed. Firm names are parodies. Not investment advice.</p>
+    </div>
+  </div>
+
+  <div id="terminal" role="dialog" aria-label="Trader laptop"></div>
+
+  <div id="boot">
+    <div class="boot-glow"></div>
+    <div class="boot-card">
+      <p class="boot-kicker">New York · Financial District</p>
+      <h1>Wall St.</h1>
+      <p class="boot-sub">Walk the street. Step onto the trading floors. Open any trader's laptop to see the live market.</p>
+      <button id="enter" class="boot-btn" disabled>Enter Wall Street</button>
+      <p class="boot-keys">WASD to walk · drag to look · click to enter</p>
+    </div>
+    <div id="boot-tape" class="boot-tape"></div>
+    <noscript><p class="noscript">Wall St. needs JavaScript and WebGL.</p></noscript>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
