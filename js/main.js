@@ -29,6 +29,7 @@ function canvasTex(c) {
 const tagger = (list) => (obj, action, data) => obj.traverse((o) => { if (o.isMesh) { o.userData.action = action; o.userData.data = data; list.push(o); } });
 
 const $ = (s) => document.querySelector(s);
+if (isTouch) $('#notice').lastChild.textContent = 'Tap on any computer to see the live stock market';
 const hint = $('#hint'), prompt = $('#prompt'), fade = $('#fade'), place = $('#place'), dock = $('#dock'), helpEl = $('#help'), tapeEl = $('#tape');
 
 // ---------------------------------------------------------------- floors
@@ -399,7 +400,6 @@ function start() {
   const { p, look } = followCamera();
   flyTo(p, look, lowPower ? 1600 : 2400, () => {
     mode = 'walk';
-    toast(isTouch ? 'Tap a laptop to open it. Tap the floor to walk.' : 'Click any laptop to open it. WASD to walk, drag to look.');
   });
   syncHud();
 }
