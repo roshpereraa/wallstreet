@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0c10">
-  <meta name="description" content="Walk down a 3D Wall Street, step onto the trading floors and open any trader's laptop for live stock market data.">
+  <meta name="description" content="Step onto a 3D Wall Street trading floor and open any trader's laptop for live stock market data.">
   <title>Wall St.</title>
   <meta property="og:type" content="website">
   <meta property="og:title" content="Wall St.">
-  <meta property="og:description" content="Walk down a 3D Wall Street, step onto the trading floors and open any trader's laptop for live stock market data.">
+  <meta property="og:description" content="Step onto a 3D Wall Street trading floor and open any trader's laptop for live stock market data.">
   <meta property="og:image" content="/favicon.svg">
   <meta name="twitter:card" content="summary">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -28,7 +28,7 @@
   <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" crossorigin>
 </head>
 <body>
-  <canvas id="scene" aria-label="Wall Street, an interactive 3D scene"></canvas>
+  <canvas id="scene" aria-label="A Wall Street trading floor, an interactive 3D scene"></canvas>
 
   <div id="hud">
     <div id="place"></div>
@@ -44,21 +44,20 @@
     <div class="help-card">
       <header><h2>How to explore</h2><button data-close aria-label="Close">✕</button></header>
       <ul class="help-taps">
-        <li><b>Buildings</b> click one to walk in (or press E at the door)</li>
         <li><b>Laptops</b> click any trader's laptop for live markets</li>
-        <li><b>The Exchange</b> / wall boards open a market overview</li>
-        <li><b>The bull</b> tells you how the S&amp;P is doing</li>
-        <li><b>Ground</b> click or tap to walk there</li>
+        <li><b>Wall board</b> opens the desk overview</li>
+        <li><b>Floor</b> click or tap to walk there</li>
+        <li><b>Floor switcher</b> (top right) visits the other firms' desks</li>
       </ul>
       <h3>Keyboard</h3>
       <dl class="keys">
         <dt>WASD / Arrows</dt><dd>walk</dd>
         <dt>Shift</dt><dd>run</dd>
         <dt>Drag / Wheel</dt><dd>look around / zoom</dd>
-        <dt>E</dt><dd>enter · open laptop</dd>
-        <dt>Q</dt><dd>market overview</dd>
-        <dt>M</dt><dd>sound</dd>
-        <dt>Esc</dt><dd>close laptop · back to street</dd>
+        <dt>E</dt><dd>open the nearest laptop</dd>
+        <dt>Q</dt><dd>desk overview</dd>
+        <dt>F</dt><dd>next trading floor</dd>
+        <dt>Esc</dt><dd>close laptop</dd>
         <dt>/</dt><dd>search tickers (in a laptop)</dd>
       </dl>
       <p class="help-note">Market data from Yahoo Finance, served through this site's API. Quotes may be delayed. Firm names are parodies. Not investment advice.</p>
@@ -70,11 +69,11 @@
   <div id="boot">
     <div class="boot-glow"></div>
     <div class="boot-card">
-      <p class="boot-kicker">New York · Financial District</p>
+      <p class="boot-kicker">New York · Trading Floor</p>
       <h1>Wall St.</h1>
-      <p class="boot-sub">Walk the street. Step onto the trading floors. Open any trader's laptop to see the live market.</p>
-      <button id="enter" class="boot-btn" disabled>Enter Wall Street</button>
-      <p class="boot-keys">WASD to walk · drag to look · click to enter</p>
+      <p class="boot-sub">Step onto the floor. Walk the desks. Open any trader's laptop to see the live market.</p>
+      <button id="enter" class="boot-btn" disabled>Enter the floor</button>
+      <p class="boot-keys">WASD to walk · drag to look · click a laptop</p>
     </div>
     <div id="boot-tape" class="boot-tape"></div>
     <noscript><p class="noscript">Wall St. needs JavaScript and WebGL.</p></noscript>

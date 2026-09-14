@@ -7,116 +7,6 @@ const mk = (w, h) => Object.assign(document.createElement('canvas'), { width: w,
 let seed = 7;
 export const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 
-export function skyCanvas() {
-  const c = mk(16, 512), g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 0, 512);
-  grd.addColorStop(0, '#070b1a');
-  grd.addColorStop(0.45, '#1a2140');
-  grd.addColorStop(0.72, '#5b3a52');
-  grd.addColorStop(0.86, '#c86a3e');
-  grd.addColorStop(1, '#f2a65a');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 16, 512);
-  return c;
-}
-
-// Office-tower facade: a grid of windows, some lit. Used as colour map and emissive map.
-export function facadeCanvas({ cols = 8, rows = 16, base = '#1b2230', lit = 0.45, warm = true } = {}) {
-  const c = mk(512, 1024), g = c.getContext('2d');
-  g.fillStyle = base;
-  g.fillRect(0, 0, 512, 1024);
-  const cw = 512 / cols, rh = 1024 / rows;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const on = rand() < lit;
-      const hue = warm ? (rand() < 0.8 ? '255,208,140' : '190,220,255') : (rand() < 0.7 ? '200,225,255' : '255,220,160');
-      g.fillStyle = on ? `rgba(${hue},${0.55 + rand() * 0.45})` : `rgba(40,55,80,${0.5 + rand() * 0.3})`;
-      g.fillRect(x * cw + cw * 0.14, y * rh + rh * 0.16, cw * 0.72, rh * 0.62);
-    }
-  }
-  // mullions
-  g.fillStyle = 'rgba(0,0,0,.35)';
-  for (let y = 0; y < rows; y++) g.fillRect(0, y * rh, 512, rh * 0.08);
-  return c;
-}
-
-// Emissive-only copy: black everywhere except the lit windows.
-export function facadeGlow(src) {
-  const c = mk(src.width, src.height), g = c.getContext('2d');
-  g.drawImage(src, 0, 0);
-  const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
-    if (lum < 150) { d[i] = d[i + 1] = d[i + 2] = 0; }
-  }
-  g.putImageData(img, 0, 0);
-  return c;
-}
-
-export function stoneCanvas(color) {
-  const c = mk(256, 256), g = c.getContext('2d');
-  g.fillStyle = color;
-  g.fillRect(0, 0, 256, 256);
-  for (let y = 0; y < 256; y += 32) {
-    g.fillStyle = 'rgba(0,0,0,.22)';
-    g.fillRect(0, y, 256, 2);
-    const off = (y / 32) % 2 ? 0 : 48;
-    for (let x = off; x < 256; x += 96) g.fillRect(x, y, 2, 32);
-  }
-  for (let i = 0; i < 900; i++) {
-    g.fillStyle = `rgba(${rand() < 0.5 ? '255,255,255' : '0,0,0'},${rand() * 0.06})`;
-    g.fillRect(rand() * 256, rand() * 256, 2, 2);
-  }
-  return c;
-}
-
-export function roadCanvas() {
-  const c = mk(256, 512), g = c.getContext('2d');
-  g.fillStyle = '#2a2b2f';
-  g.fillRect(0, 0, 256, 512);
-  for (let i = 0; i < 2500; i++) {
-    g.fillStyle = `rgba(${rand() < 0.5 ? '255,255,255' : '0,0,0'},${rand() * 0.08})`;
-    g.fillRect(rand() * 256, rand() * 512, 2, 2);
-  }
-  g.fillStyle = '#e6b84a';
-  g.fillRect(124, 0, 3, 512);
-  g.fillRect(130, 0, 3, 512);
-  return c;
-}
-
-export function cobbleCanvas() {
-  const c = mk(256, 256), g = c.getContext('2d');
-  g.fillStyle = '#6b6660';
-  g.fillRect(0, 0, 256, 256);
-  for (let y = 0; y < 256; y += 32) for (let x = 0; x < 256; x += 32) {
-    const v = 90 + rand() * 30;
-    g.fillStyle = `rgb(${v},${v - 4},${v - 10})`;
-    g.fillRect(x + 1, y + 1, 30, 30);
-  }
-  return c;
-}
-
-export function signCanvas(text, color, sub = 'EST. 1869 · TRADING FLOOR') {
-  const c = mk(1024, 200), g = c.getContext('2d');
-  g.fillStyle = '#0c0d10';
-  g.fillRect(0, 0, 1024, 200);
-  g.strokeStyle = color;
-  g.lineWidth = 4;
-  g.strokeRect(10, 10, 1004, 180);
-  g.fillStyle = color;
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.font = '600 92px "Cormorant Garamond", Georgia, "Times New Roman", serif';
-  g.shadowColor = color;
-  g.shadowBlur = 18;
-  g.fillText(text.toUpperCase(), 512, 92);
-  g.shadowBlur = 0;
-  g.font = '500 24px "IBM Plex Mono", monospace';
-  g.globalAlpha = 0.7;
-  g.fillText(sub, 512, 160);
-  return c;
-}
-
 export function carpetCanvas(tint = '#1c2330') {
   const c = mk(256, 256), g = c.getContext('2d');
   g.fillStyle = tint;
@@ -149,16 +39,6 @@ export function skylineCanvas() {
     }
     x += w + 2;
   }
-  return c;
-}
-
-export function glowCanvas(color) {
-  const c = mk(256, 256), g = c.getContext('2d');
-  const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grd.addColorStop(0, color);
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 256, 256);
   return c;
 }
 

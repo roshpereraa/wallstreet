@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FIRMS, INDICES, SHOUTS, trader } from './data.js';
 import { person, sit, addPhone, mat, walk } from './avatar.js';
-import { carpetCanvas, skylineCanvas, signCanvas, drawBoard, drawLaptop } from './textures.js';
+import { carpetCanvas, skylineCanvas, drawBoard, drawLaptop } from './textures.js';
 
 const RW = 22, RD = 17, RH = 5.6;
 
@@ -105,18 +105,6 @@ export function buildFloor(fi, { canvasTex, lowPower, tag, onShout }) {
     g.add(sb);
     tag(sb, 'board', fi);
   });
-
-  // ------------------------------------------------ exit
-  const exitSign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.82), new THREE.MeshBasicMaterial({ map: canvasTex(signCanvas('Exit to Wall St.', '#ff5b4d', `${firm.name.toUpperCase()} · LOBBY`)), toneMapped: false }));
-  exitSign.position.set(0, 3.8, RD - 0.05);
-  exitSign.rotation.y = Math.PI;
-  g.add(exitSign);
-  const exitDoor = new THREE.Mesh(new THREE.PlaneGeometry(3, 3.2), new THREE.MeshStandardMaterial({ color: '#111', emissive: firm.accent, emissiveIntensity: 0.9 }));
-  exitDoor.position.set(0, 1.6, RD - 0.05);
-  exitDoor.rotation.y = Math.PI;
-  g.add(exitDoor);
-  tag(exitDoor, 'exit', fi);
-  tag(exitSign, 'exit', fi);
 
   // ------------------------------------------------ desks
   const rowsZ = lowPower ? [7, 1, -5] : [8, 3.5, -1, -5.5, -10];
@@ -356,5 +344,5 @@ export function buildFloor(fi, { canvasTex, lowPower, tag, onShout }) {
   }
 
   const bounds = { minX: -RW + 0.6, maxX: RW - 0.6, minZ: -RD + 1.2, maxZ: RD - 0.6 };
-  return { group: g, seats, colliders, bounds, update, spawn: new THREE.Vector3(0, 0, RD - 3.5), exit: new THREE.Vector3(0, 0, RD - 0.8), firm };
+  return { group: g, seats, colliders, bounds, update, spawn: new THREE.Vector3(0, 0, RD - 3.5), firm };
 }

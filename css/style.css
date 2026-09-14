@@ -32,7 +32,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 #dock button { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 10px; font-size: 14px; min-height: 40px; }
 #dock button i { font-style: normal; font-size: 16px; width: 18px; text-align: center; }
-#dock button:hover { background: rgba(245,210,122,.14); }
+#dock button:hover, .dock-floor:hover { background: rgba(245,210,122,.14); }
+.dock-floor { display: flex; align-items: center; gap: 6px; padding: 0 4px 0 12px; border-radius: 10px; font-size: 14px; min-height: 40px; cursor: pointer; }
+.dock-floor i { font-style: normal; font-size: 15px; }
+.dock-floor select { appearance: none; background: transparent; border: 0; color: var(--ink); font: inherit; padding: 8px 8px 8px 0; cursor: pointer; outline: none; }
+.dock-floor select option { background: #111318; color: var(--ink); }
 
 #tape {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 16px calc(8px + var(--safe-b)); display: flex; gap: 22px; overflow: hidden; white-space: nowrap;

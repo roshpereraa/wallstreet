@@ -1,11 +1,9 @@
 import * as THREE from 'three';
-import { buildStreet } from './street.js';
 import { buildFloor } from './floor.js';
 import { person, walk } from './avatar.js';
 import { createTerminal } from './terminal.js';
-import { FIRMS, EXCHANGE, INDICES, label } from './data.js';
+import { FIRMS, INDICES, label } from './data.js';
 import { quotes, watch, onQuotes, refresh, startPolling, fmtPrice, fmtPct, tone } from './market.js';
-import { blip, bell, setMurmur, toggleMute, sound } from './sound.js';
 
 // ---------------------------------------------------------------- setup
 const isTouch = matchMedia('(pointer: coarse)').matches;
@@ -15,13 +13,12 @@ const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !lowPower, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, lowPower ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 900);
+scene.background = new THREE.Color('#0b0c10');
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 200);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 function canvasTex(c) {
   const t = new THREE.CanvasTexture(c);
@@ -34,35 +31,31 @@ const tagger = (list) => (obj, action, data) => obj.traverse((o) => { if (o.isMe
 const $ = (s) => document.querySelector(s);
 const hint = $('#hint'), prompt = $('#prompt'), fade = $('#fade'), place = $('#place'), dock = $('#dock'), helpEl = $('#help'), tapeEl = $('#tape');
 
-// ---------------------------------------------------------------- worlds
-const streetHits = [];
-const street = buildStreet({ canvasTex, lowPower, tag: tagger(streetHits) });
+// ---------------------------------------------------------------- floors
 const floors = new Map();
-let world = { kind: 'street', data: street, hits: streetHits, firm: -1 };
-scene.add(street.group);
-scene.fog = new THREE.Fog('#2a2540', 60, 260);
-
-const bubbles = [];
 function getFloor(fi) {
   if (!floors.has(fi)) {
     const hits = [];
     const data = buildFloor(fi, { canvasTex, lowPower, tag: tagger(hits), onShout: (seat, text) => shout(seat, text) });
-    floors.set(fi, { kind: 'floor', data, hits, firm: fi });
+    floors.set(fi, { data, hits, firm: fi });
   }
   return floors.get(fi);
 }
 
+const deepFirm = FIRMS.findIndex((f) => `floor-${f.id}` === location.hash.slice(1));
+let world = getFloor(Math.max(0, deepFirm));
+scene.add(world.data.group);
+
 // ---------------------------------------------------------------- player
 const me = person(777, { briefcase: true });
 scene.add(me.root);
-const pos = street.spawn.clone();
-const player = { yaw: Math.PI, speed: 0, phase: 0, target: null, onArrive: null };
-let camYaw = 0, camPitch = 0.32, camDist = 7.5;
+const pos = world.data.spawn.clone();
+const player = { yaw: Math.PI, speed: 0, phase: 0, target: null };
+let camYaw = 0, camPitch = 0.26, camDist = 4.6;
 const camLook = new THREE.Vector3();
 
 // ---------------------------------------------------------------- terminal
-const terminalRoot = $('#terminal');
-const terminal = createTerminal(terminalRoot, { onClose: () => closeLaptop(), blip });
+const terminal = createTerminal($('#terminal'), { onClose: () => closeLaptop() });
 
 // ---------------------------------------------------------------- modes
 let mode = 'boot'; // boot | intro | walk | fade | zoom | laptop
@@ -74,74 +67,43 @@ function flyTo(p, look, dur, done) {
 }
 
 function followCamera() {
-  const inside = world.kind === 'floor';
-  const dist = inside ? Math.min(camDist, 4.6) : camDist;
-  const pitch = inside ? Math.min(camPitch, 0.26) : camPitch;
-  const h = Math.sin(pitch) * dist + 1.6;
-  const flat = Math.cos(pitch) * dist;
-  const p = new THREE.Vector3(pos.x + Math.sin(camYaw) * flat, pos.y + h, pos.z + Math.cos(camYaw) * flat);
+  const dist = Math.min(camDist, 6);
+  const h = Math.sin(camPitch) * dist + 1.6;
+  const flat = Math.cos(camPitch) * dist;
   const b = world.data.bounds;
-  if (world.kind === 'street') p.x = THREE.MathUtils.clamp(p.x, -8.4, 8.4);
-  else {
-    p.x = THREE.MathUtils.clamp(p.x, b.minX - 0.3, b.maxX + 0.3);
-    p.z = THREE.MathUtils.clamp(p.z, b.minZ - 0.8, b.maxZ + 0.4);
-    p.y = Math.min(p.y, 5.1);
-  }
+  const p = new THREE.Vector3(
+    THREE.MathUtils.clamp(pos.x + Math.sin(camYaw) * flat, b.minX - 0.3, b.maxX + 0.3),
+    Math.min(pos.y + h, 5.1),
+    THREE.MathUtils.clamp(pos.z + Math.cos(camYaw) * flat, b.minZ - 0.8, b.maxZ + 0.4),
+  );
   return { p, look: new THREE.Vector3(pos.x, pos.y + 1.45, pos.z) };
 }
 
-function setWorld(next, spawn, yaw) {
-  scene.remove(world.data.group);
-  world = next;
-  scene.add(world.data.group);
-  pos.copy(spawn);
-  player.yaw = yaw + Math.PI;
-  player.target = null;
-  camYaw = yaw;
-  scene.fog = world.kind === 'street' ? new THREE.Fog('#2a2540', 60, 260) : null;
-  scene.background = world.kind === 'street' ? null : new THREE.Color('#0b0c10');
-  const { p, look } = followCamera();
-  camera.position.copy(p);
-  camLook.copy(look);
-  bubbles.forEach((b) => (b.el.hidden = true));
-  setMurmur(world.kind === 'floor' && !sound.muted);
-  syncHud();
-}
-
-function transition(fn) {
+function switchFloor(fi) {
+  if (mode !== 'walk' || fi === world.firm) return;
   mode = 'fade';
   fade.classList.add('on');
   hint.hidden = true;
   setTimeout(() => {
-    fn();
+    scene.remove(world.data.group);
+    world = getFloor(fi);
+    scene.add(world.data.group);
+    watch(FIRMS[fi].symbols);
+    pos.copy(world.data.spawn);
+    player.yaw = Math.PI;
+    player.target = null;
+    camYaw = 0;
+    const { p, look } = followCamera();
+    camera.position.copy(p);
+    camLook.copy(look);
+    bubbles.forEach((b) => (b.el.hidden = true));
+    syncHud();
     requestAnimationFrame(() => {
       fade.classList.remove('on');
       mode = 'walk';
+      toast(`${FIRMS[fi].name} · ${FIRMS[fi].desk}`);
     });
   }, 420);
-}
-
-function enterFirm(fi) {
-  if (mode !== 'walk') return;
-  blip(520, 0.1);
-  transition(() => {
-    const f = getFloor(fi);
-    watch(FIRMS[fi].symbols);
-    setWorld(f, f.data.spawn, 0);
-    bell();
-    toast(`Welcome to ${FIRMS[fi].name}. Click any laptop to open it.`);
-  });
-}
-
-function exitToStreet() {
-  if (mode !== 'walk' || world.kind !== 'floor') return;
-  const fi = world.firm;
-  blip(380, 0.1);
-  transition(() => {
-    const door = street.doors.find((d) => d.firm === fi);
-    const spawn = door.pos.clone().add(new THREE.Vector3(-door.side * 1.6, 0, 0));
-    setWorld({ kind: 'street', data: street, hits: streetHits, firm: -1 }, spawn, door.side * Math.PI / 2);
-  });
 }
 
 function openLaptop(seat) {
@@ -151,7 +113,6 @@ function openLaptop(seat) {
   hint.hidden = true;
   prompt.hidden = true;
   player.target = null;
-  blip(660, 0.08);
   const sp = seat.screen.getWorldPosition(new THREE.Vector3());
   const n = new THREE.Vector3(0, 0, 1).applyQuaternion(seat.screen.getWorldQuaternion(new THREE.Quaternion()));
   // stand the visitor in the aisle behind the chair so the camera returns somewhere sensible
@@ -169,14 +130,13 @@ function openLaptop(seat) {
   });
 }
 
-function openOverview(firm, who = null) {
+function openOverview(firm) {
   if (mode !== 'walk') return;
   mode = 'laptop';
   activeSeat = null;
   hint.hidden = prompt.hidden = true;
-  blip(660, 0.08);
   document.body.classList.add('in-laptop');
-  terminal.open({ firm, symbol: firm.symbols[0], who });
+  terminal.open({ firm, symbol: firm.symbols[0], who: null });
   startPolling(15000);
 }
 
@@ -185,7 +145,6 @@ function closeLaptop() {
   terminal.close();
   document.body.classList.remove('in-laptop');
   startPolling(30000);
-  blip(420, 0.08);
   if (!activeSeat) { mode = 'walk'; return; }
   mode = 'zoom';
   const { p, look } = followCamera();
@@ -199,6 +158,7 @@ function closeLaptop() {
 }
 
 // ---------------------------------------------------------------- shouts
+const bubbles = [];
 for (let i = 0; i < 3; i++) {
   const el = document.createElement('div');
   el.className = 'bubble';
@@ -207,7 +167,7 @@ for (let i = 0; i < 3; i++) {
   bubbles.push({ el, seat: null, until: 0 });
 }
 function shout(seat, text) {
-  if (mode !== 'walk' || world.kind !== 'floor') return;
+  if (mode !== 'walk') return;
   const b = bubbles.reduce((a, c) => (c.until < a.until ? c : a));
   b.seat = seat;
   b.until = performance.now() + 2600;
@@ -229,23 +189,23 @@ function toast(text) {
 
 // ---------------------------------------------------------------- HUD
 function syncHud() {
-  if (world.kind === 'street') {
-    place.innerHTML = '<b>Wall Street</b><span>Financial District · New York</span>';
-  } else {
-    const f = FIRMS[world.firm];
-    place.innerHTML = `<b style="color:${f.color}">${f.name}</b><span>${f.desk} · ${world.data.seats.length} traders</span>`;
-  }
+  const f = FIRMS[world.firm];
+  place.innerHTML = `<b style="color:${f.color}">${f.name}</b><span>${f.desk} · ${world.data.seats.length} traders</span>`;
   dock.innerHTML = `
-    ${world.kind === 'floor' ? '<button data-a="exit" title="Back to the street (Esc)"><i>⟵</i><span>Street</span></button>' : '<button data-a="exchange" title="Market overview"><i>▤</i><span>Markets</span></button>'}
-    <button data-a="sound" title="Sound (M)"><i>${sound.muted ? '🔇' : '🔊'}</i><span>${sound.muted ? 'Muted' : 'Sound'}</span></button>
+    <label class="dock-floor" title="Switch trading floor">
+      <i>⇅</i>
+      <select aria-label="Trading floor">${FIRMS.map((x, i) => `<option value="${i}"${i === world.firm ? ' selected' : ''}>${x.name}</option>`).join('')}</select>
+    </label>
+    <button data-a="overview" title="Desk overview (Q)"><i>▤</i><span>Markets</span></button>
     <button data-a="help" title="Controls (?)"><i>?</i><span>Help</span></button>`;
 }
 dock.addEventListener('click', (e) => {
   const a = e.target.closest('[data-a]')?.dataset.a;
-  if (a === 'exit') exitToStreet();
-  else if (a === 'exchange') openOverview(EXCHANGE);
-  else if (a === 'sound') { toggleMute(); setMurmur(world.kind === 'floor' && !sound.muted); syncHud(); }
+  if (a === 'overview') openOverview(FIRMS[world.firm]);
   else if (a === 'help') toggleHelp();
+});
+dock.addEventListener('change', (e) => {
+  if (e.target.matches('select')) { switchFloor(Number(e.target.value)); e.target.blur(); }
 });
 function toggleHelp(force) { helpEl.hidden = force === undefined ? !helpEl.hidden : !force; }
 helpEl.addEventListener('click', (e) => { if (e.target === helpEl || e.target.closest('[data-close]')) toggleHelp(false); });
@@ -268,20 +228,16 @@ addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLaptop();
     return;
   }
-  if (e.target.closest?.('input, textarea')) return;
-  if (e.key === 'Escape') {
-    if (!helpEl.hidden) return toggleHelp(false);
-    if (world.kind === 'floor') exitToStreet();
-    return;
-  }
+  if (e.target.closest?.('input, textarea, select')) return;
+  if (e.key === 'Escape') { toggleHelp(false); return; }
   if (mode !== 'walk' || e.metaKey || e.ctrlKey) return;
   const k = e.key.toLowerCase();
   keys.add(k);
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (k === 'e' || k === 'enter') nearest?.run();
-  else if (k === 'm') { toggleMute(); setMurmur(world.kind === 'floor' && !sound.muted); syncHud(); }
   else if (k === '?' || k === 'h') toggleHelp();
-  else if (k === 'q') openOverview(world.kind === 'floor' ? FIRMS[world.firm] : EXCHANGE);
+  else if (k === 'q') openOverview(FIRMS[world.firm]);
+  else if (k === 'f') switchFloor((world.firm + 1) % FIRMS.length);
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
@@ -292,8 +248,7 @@ const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 function pick(x, y) {
   ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
-  const hit = raycaster.intersectObjects(world.hits, false).find((h) => h.object.visible);
-  return hit;
+  return raycaster.intersectObjects(world.hits, false).find((h) => h.object.visible);
 }
 
 let drag = null;
@@ -308,7 +263,7 @@ addEventListener('pointermove', (e) => {
     drag.y = e.clientY;
     if (drag.moved > 6) {
       camYaw -= dx * 0.005;
-      camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.004, 0.05, 1.2);
+      camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.004, 0.05, 1.0);
       hint.hidden = true;
       return;
     }
@@ -329,21 +284,17 @@ addEventListener('pointerup', (e) => {
   if (!d || d.moved > 6 || mode !== 'walk' || e.target !== canvas) return;
   const h = pick(e.clientX, e.clientY);
   if (h && act(h.object)) return;
-  // click on the ground: walk there
+  // click on the floor: walk there
   const pt = raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
-  if (pt && pt.distanceTo(pos) < 60) { player.target = pt; player.onArrive = null; spawnMarker(pt); }
+  if (pt && pt.distanceTo(pos) < 60) { player.target = pt; spawnMarker(pt); }
 });
 canvas.addEventListener('wheel', (e) => {
-  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.01, 3, 14);
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.01, 2.5, 6);
 }, { passive: true });
 
 function describe(o) {
   const { action, data } = o.userData;
-  if (action === 'building' || action === 'door') return `Enter ${FIRMS[data].name}`;
-  if (action === 'exchange') return 'The Exchange · market overview';
-  if (action === 'bull') return 'The Charging Bull';
   if (action === 'board') return `${FIRMS[data].name} board · open overview`;
-  if (action === 'exit') return 'Exit to Wall Street';
   if (action === 'seat') {
     const s = world.data.seats[data];
     return `${s.who.name} · ${label(s.symbol)} · open laptop`;
@@ -353,28 +304,9 @@ function describe(o) {
 
 function act(o) {
   const { action, data } = o.userData;
-  if (action === 'building' || action === 'door') {
-    const door = street.doors.find((d) => d.firm === data);
-    if (door.pos.distanceTo(pos) > 28) enterFirm(data);
-    else walkTo(door.pos, () => enterFirm(data));
-    return true;
-  }
-  if (action === 'exchange') { openOverview(EXCHANGE); return true; }
-  if (action === 'bull') {
-    const q = quotes.get('^GSPC');
-    toast(q ? `The bull says: S&P 500 is ${q.changePct >= 0 ? 'up' : 'down'} ${Math.abs(q.changePct).toFixed(2)}% (${fmtPrice(q.price)})` : 'The bull is waiting for the market data…');
-    blip(140, 0.3, 'sawtooth', 0.08);
-    return true;
-  }
   if (action === 'board') { openOverview(FIRMS[data]); return true; }
-  if (action === 'exit') { walkTo(world.data.exit, exitToStreet); return true; }
   if (action === 'seat') { openLaptop(world.data.seats[data]); return true; }
   return false;
-}
-
-function walkTo(p, cb) {
-  player.target = p.clone();
-  player.onArrive = cb;
 }
 
 // tap marker
@@ -383,34 +315,34 @@ marker.rotation.x = -Math.PI / 2;
 marker.visible = false;
 scene.add(marker);
 function spawnMarker(p) {
-  marker.position.set(p.x, 0.2, p.z);
+  marker.position.set(p.x, 0.02, p.z);
   marker.visible = true;
   marker.userData.t = 0;
 }
 
 // ---------------------------------------------------------------- movement
-const tmpBox = new THREE.Box3();
 const R = 0.35;
 function blocked(x, z) {
   const b = world.data.bounds;
   if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) return true;
   for (const c of world.data.colliders) {
-    if (x > c.min.x - R && x < c.max.x + R && z > c.min.z - R && z < c.max.z + R && c.min.y < 1.5) return true;
+    if (x > c.min.x - R && x < c.max.x + R && z > c.min.z - R && z < c.max.z + R) return true;
   }
   return false;
 }
 
 let nearest = null;
+const tmpV = new THREE.Vector3();
 function updatePlayer(dt) {
   let ix = 0, iz = 0;
   if (keys.has('w') || keys.has('arrowup')) iz -= 1;
   if (keys.has('s') || keys.has('arrowdown')) iz += 1;
   if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
   if (keys.has('d') || keys.has('arrowright')) ix += 1;
-  const run = keys.has('shift');
   let mx = 0, mz = 0;
   if (ix || iz) {
     player.target = null;
+    marker.visible = false;
     const len = Math.hypot(ix, iz);
     ix /= len; iz /= len;
     const cs = Math.cos(camYaw), sn = Math.sin(camYaw);
@@ -418,15 +350,10 @@ function updatePlayer(dt) {
     mz = -ix * sn + iz * cs;
   } else if (player.target) {
     const dx = player.target.x - pos.x, dz = player.target.z - pos.z, d = Math.hypot(dx, dz);
-    if (d < 0.4) {
-      player.target = null;
-      marker.visible = false;
-      const cb = player.onArrive;
-      player.onArrive = null;
-      cb?.();
-    } else { mx = dx / d; mz = dz / d; }
+    if (d < 0.4) { player.target = null; marker.visible = false; }
+    else { mx = dx / d; mz = dz / d; }
   }
-  const speed = (run || player.onArrive ? 8 : 4.2) * (mx || mz ? 1 : 0);
+  const speed = (keys.has('shift') ? 7 : 4) * (mx || mz ? 1 : 0);
   player.speed += (speed - player.speed) * Math.min(1, dt * 10);
   if (mx || mz) {
     const want = Math.atan2(mx, mz);
@@ -438,40 +365,26 @@ function updatePlayer(dt) {
     let moved = false;
     if (!blocked(nx, pos.z)) { pos.x = nx; moved = true; }
     if (!blocked(pos.x, nz)) { pos.z = nz; moved = true; }
-    if (!moved && player.target) { player.target = null; player.onArrive = null; marker.visible = false; }
+    if (!moved && player.target) { player.target = null; marker.visible = false; }
   }
-  pos.y = world.kind === 'street' && Math.abs(pos.x) > 5.1 ? 0.16 : 0;
   me.root.position.copy(pos);
   me.root.rotation.y = player.yaw;
   player.phase += dt * player.speed * 2.2;
   walk(me, player.phase, Math.min(1, player.speed / 4));
 
-  // interaction prompt
+  // interaction prompt for the closest laptop
   nearest = null;
-  if (world.kind === 'street') {
-    for (const d of street.doors) {
-      if (Math.abs(pos.z - d.pos.z) < 3 && Math.abs(pos.x - d.pos.x) < 2.4) {
-        nearest = { text: `Enter ${FIRMS[d.firm].name}`, run: () => enterFirm(d.firm) };
-      }
-    }
-  } else {
-    const ex = world.data.exit;
-    if (pos.distanceTo(ex) < 2.6) nearest = { text: 'Exit to Wall Street', run: exitToStreet };
-    else {
-      let best = 2.6;
-      for (const s of world.data.seats) {
-        const sp = s.seat.getWorldPosition(tmpV);
-        const d = Math.hypot(sp.x - pos.x, sp.z + 1.4 - pos.z);
-        if (d < best) { best = d; nearest = { text: `Open ${s.who.name.split(' ')[0]}'s laptop · ${label(s.symbol)}`, run: () => openLaptop(s) }; }
-      }
-    }
+  let best = 2.6;
+  for (const s of world.data.seats) {
+    const sp = s.seat.getWorldPosition(tmpV);
+    const d = Math.hypot(sp.x - pos.x, sp.z + 1.4 - pos.z);
+    if (d < best) { best = d; nearest = { text: `Open ${s.who.name.split(' ')[0]}'s laptop · ${label(s.symbol)}`, run: () => openLaptop(s) }; }
   }
   if (nearest) {
     prompt.hidden = false;
     prompt.innerHTML = `<kbd>${isTouch ? 'Tap' : 'E'}</kbd>${nearest.text}`;
   } else prompt.hidden = true;
 }
-const tmpV = new THREE.Vector3();
 
 // ---------------------------------------------------------------- boot
 const bootEl = $('#boot');
@@ -479,25 +392,25 @@ $('#enter').addEventListener('click', start);
 $('#enter').disabled = false;
 function start() {
   if (mode !== 'boot') return;
-  blip(520, 0.12);
   bootEl.classList.add('leaving');
   setTimeout(() => (bootEl.hidden = true), 900);
   document.body.classList.add('entered');
   mode = 'intro';
   const { p, look } = followCamera();
-  flyTo(p, look, lowPower ? 1800 : 2800, () => {
+  flyTo(p, look, lowPower ? 1600 : 2400, () => {
     mode = 'walk';
-    toast(isTouch ? 'Tap to walk, drag to look. Tap a building to go inside.' : 'WASD to walk, drag to look. Click a building to go inside.');
+    toast(isTouch ? 'Tap a laptop to open it. Tap the floor to walk.' : 'Click any laptop to open it. WASD to walk, drag to look.');
   });
   syncHud();
 }
 addEventListener('keydown', (e) => { if (mode === 'boot' && (e.key === 'Enter' || e.key === ' ')) start(); });
 
-camera.position.set(0, 90, 60);
-camLook.set(0, 10, -60);
+// boot view: high over the floor, looking at the big board
+camera.position.set(0, 5, 16);
+camLook.set(0, 2.5, -10);
 camera.lookAt(camLook);
 
-watch([...INDICES, ...street.tapeSymbols]);
+watch([...INDICES, ...FIRMS[world.firm].symbols]);
 startPolling(30000);
 refresh();
 
@@ -518,7 +431,7 @@ function frame(now) {
     camLook.lerpVectors(tween.l0, tween.l1, e);
     if (k >= 1) { const d = tween.done; tween = null; d?.(); }
   } else if (mode === 'boot') {
-    camera.position.set(Math.sin(t * 0.05) * 6, 60 + Math.sin(t * 0.2) * 3, 50);
+    camera.position.set(Math.sin(t * 0.15) * 4, 5 + Math.sin(t * 0.3) * 0.2, 16);
   }
 
   if (mode === 'walk') {
@@ -534,15 +447,12 @@ function frame(now) {
     marker.scale.setScalar(1 + Math.sin(marker.userData.t * 6) * 0.15);
   }
 
-  if (mode !== 'laptop') {
-    if (world.kind === 'street') street.update(t, dt, quotes, pos);
-    else world.data.update(t, dt, quotes, now);
-  }
+  if (mode !== 'laptop') world.data.update(t, dt, quotes, now);
 
   // speech bubbles follow their trader
   bubbles.forEach((b) => {
     if (b.el.hidden) return;
-    if (now > b.until || mode !== 'walk' || world.kind !== 'floor') { b.el.hidden = true; return; }
+    if (now > b.until || mode !== 'walk') { b.el.hidden = true; return; }
     b.seat.person.neck.getWorldPosition(hv);
     hv.y += 0.55;
     hv.project(camera);
@@ -562,19 +472,15 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
 });
 
-// deep link: #floor-<firm id> jumps inside
-const deep = location.hash.slice(1);
-const deepFirm = FIRMS.findIndex((f) => `floor-${f.id}` === deep);
-if (deep === 'street' || deepFirm >= 0) {
+// deep link: #floor-<firm id> skips the title screen
+if (deepFirm >= 0) {
   bootEl.hidden = true;
   document.body.classList.add('entered');
   mode = 'walk';
+  const { p, look } = followCamera();
+  camera.position.copy(p);
+  camLook.copy(look);
   syncHud();
-  if (deepFirm >= 0) {
-    const f = getFloor(deepFirm);
-    watch(FIRMS[deepFirm].symbols);
-    setWorld(f, f.data.spawn, 0);
-  }
 }
 
 // handy for debugging from the console

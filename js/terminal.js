@@ -13,7 +13,7 @@ function saveList(l) {
   try { localStorage.setItem('ws.mylist', JSON.stringify(l)); } catch { /* private mode */ }
 }
 
-export function createTerminal(root, { onClose, blip }) {
+export function createTerminal(root, { onClose }) {
   root.innerHTML = `
     <div class="lt-bezel">
       <div class="lt-cam"></div>
@@ -300,7 +300,6 @@ export function createTerminal(root, { onClose, blip }) {
     if (!s) return;
     symbol = s;
     watch([s]);
-    blip?.(700, 0.05);
     renderLists();
     renderHeader();
     loadChart();
