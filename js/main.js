@@ -74,9 +74,11 @@ function flyTo(p, look, dur, done) {
 }
 
 function followCamera() {
-  const dist = world.kind === 'floor' ? Math.min(camDist, 6) : camDist;
-  const h = Math.sin(camPitch) * dist + 1.6;
-  const flat = Math.cos(camPitch) * dist;
+  const inside = world.kind === 'floor';
+  const dist = inside ? Math.min(camDist, 4.6) : camDist;
+  const pitch = inside ? Math.min(camPitch, 0.26) : camPitch;
+  const h = Math.sin(pitch) * dist + 1.6;
+  const flat = Math.cos(pitch) * dist;
   const p = new THREE.Vector3(pos.x + Math.sin(camYaw) * flat, pos.y + h, pos.z + Math.cos(camYaw) * flat);
   const b = world.data.bounds;
   if (world.kind === 'street') p.x = THREE.MathUtils.clamp(p.x, -8.4, 8.4);

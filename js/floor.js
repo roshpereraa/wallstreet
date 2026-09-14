@@ -119,7 +119,7 @@ export function buildFloor(fi, { canvasTex, lowPower, tag, onShout }) {
   tag(exitSign, 'exit', fi);
 
   // ------------------------------------------------ desks
-  const rowsZ = lowPower ? [8, 2, -4] : [9.5, 5, 0.5, -4, -8.5];
+  const rowsZ = lowPower ? [7, 1, -5] : [8, 3.5, -1, -5.5, -10];
   const perSide = lowPower ? 4 : 5;
   const segLen = 16.5, seatGap = segLen / perSide;
 
@@ -356,5 +356,5 @@ export function buildFloor(fi, { canvasTex, lowPower, tag, onShout }) {
   }
 
   const bounds = { minX: -RW + 0.6, maxX: RW - 0.6, minZ: -RD + 1.2, maxZ: RD - 0.6 };
-  return { group: g, seats, colliders, bounds, update, spawn: new THREE.Vector3(0, 0, RD - 2.2), exit: new THREE.Vector3(0, 0, RD - 0.8), firm };
+  return { group: g, seats, colliders, bounds, update, spawn: new THREE.Vector3(0, 0, RD - 3.5), exit: new THREE.Vector3(0, 0, RD - 0.8), firm };
 }

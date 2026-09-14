@@ -112,7 +112,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* ------------------------------------------------ laptop terminal */
 #terminal {
-  position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: clamp(0px, 2.5vw, 28px);
+  position: fixed; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center; padding: clamp(0px, 2.5vw, 28px);
   background: rgba(0,0,0,.55); backdrop-filter: blur(6px); opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s;
 }
 .in-laptop #terminal { opacity: 1; visibility: visible; }

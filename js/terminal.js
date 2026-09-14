@@ -155,7 +155,8 @@ export function createTerminal(root, { onClose, blip }) {
     if (!chart || chart.symbol !== symbol || !chart.points.length) return;
 
     const pts = chart.points;
-    const padR = 64, padB = 22, volH = Math.min(60, H * 0.18);
+    g.font = '11px "IBM Plex Mono", monospace';
+    const padR = Math.max(64, g.measureText(fmtPrice(pts.reduce((m, p) => Math.max(m, p[2]), 0), symbol)).width + 18), padB = 22, volH = Math.min(60, H * 0.18);
     const cw = W - padR, ch = H - padB - volH - 6;
     let lo = Infinity, hi = -Infinity, vmax = 0;
     for (const p of pts) {
