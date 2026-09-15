@@ -38,10 +38,12 @@ export function assess(t) {
   else if (age < 24) add(2, 'warn', 'Pool age', `${age.toFixed(1)} hours old`, 'Less than a day old. Survivors of day one are rarer than you’d think.');
   else add(2, 'ok', 'Pool age', `${Math.round(age / 24)} days old`, 'Has traded for a while, which rules out the fastest scams (not all of them).');
 
+  const holderNote = s.top10Note ? ` (${s.top10Note})` : '';
+  if (s.rugged) add(5, 'bad', 'Rug status', 'Flagged as rugged', 'This token has already been rugged: liquidity was pulled or the price collapsed. Don’t touch it.');
   if (s.top10 == null) add(3, 'unknown', 'Top 10 holders', 'Holder data unavailable', 'When a few wallets hold most of the supply, they decide the price.');
-  else if (s.top10 > 50) add(3, 'bad', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply`, 'The top 10 wallets hold over half the supply. If they sell, you are their exit liquidity.');
-  else if (s.top10 > 30) add(3, 'warn', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply`, 'Fairly concentrated. Watch those wallets before sizing up.');
-  else add(3, 'ok', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply`, 'Supply is reasonably spread out.');
+  else if (s.top10 > 50) add(3, 'bad', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply${holderNote}`, 'The top 10 wallets hold over half the supply. If they sell, you are their exit liquidity.');
+  else if (s.top10 > 30) add(3, 'warn', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply${holderNote}`, 'Fairly concentrated. Watch those wallets before sizing up.');
+  else add(3, 'ok', 'Top 10 holders', `${s.top10.toFixed(1)}% of supply${holderNote}`, 'Supply is reasonably spread out.');
 
   // mint & freeze authority are Solana token features; EVM chains don't report them
   const solana = t.network === 'solana';
@@ -53,6 +55,18 @@ export function assess(t) {
   else if (s.freezeAuthority === 'no') add(3, 'ok', 'Freeze authority', 'Revoked', 'Nobody can freeze holders’ tokens.');
   else if (solana) add(2, 'unknown', 'Freeze authority', 'Unknown', 'On Solana, check the freeze authority is revoked before buying.');
 
+  if (s.lpLocked != null) {
+    if (s.lpLocked < 50) add(3, 'bad', 'Liquidity locked', `${s.lpLocked.toFixed(0)}% locked/burned`, 'Most of the pool’s liquidity isn’t locked, so the creator can withdraw it at any moment.');
+    else if (s.lpLocked < 90) add(2, 'warn', 'Liquidity locked', `${s.lpLocked.toFixed(0)}% locked/burned`, 'Part of the liquidity could still be pulled.');
+    else add(2, 'ok', 'Liquidity locked', `${s.lpLocked.toFixed(0)}% locked/burned`, 'Pool liquidity is locked or burned, which blocks the classic rug pull.');
+  }
+  if (s.sellTax != null && s.sellTax > 0) add(3, s.sellTax > 10 ? 'bad' : 'warn', 'Sell tax', `${s.sellTax.toFixed(1)}%`, 'The contract takes a cut every time you sell. High sell taxes trap buyers.');
+  if (s.hiddenOwner === 'yes') add(3, 'bad', 'Hidden owner', 'Detected', 'The contract has a hidden owner who can change the rules after you buy.');
+  if (s.cannotSellAll === 'yes') add(3, 'bad', 'Sell restrictions', 'Can’t sell all tokens', 'The contract stops holders selling their full balance.');
+  if (s.insiders) add(2, 'warn', 'Insider wallets', 'Linked wallets detected', 'Clusters of connected wallets hold supply. Coordinated insiders can dump together.');
+  for (const r of (s.risks || []).filter((x) => x.level === 'danger').slice(0, 3)) {
+    add(2, 'bad', r.name, 'RugCheck danger', r.description || 'Flagged as dangerous by RugCheck.');
+  }
   if (s.honeypot === 'yes') add(4, 'bad', 'Honeypot check', 'Flagged as honeypot', 'You can buy but not sell. Never trade these.');
   else if (s.honeypot === 'no') add(4, 'ok', 'Honeypot check', 'Sells work', 'Test sells go through.');
 
@@ -93,7 +107,7 @@ export function assess(t) {
     risk += c.status === 'bad' ? c.weight : c.status === 'warn' ? c.weight * 0.5 : 0;
   }
   // any critical red flag keeps the verdict at medium risk or worse, however clean the rest looks
-  const critical = checks.filter((c) => c.status === 'bad' && ['Liquidity', 'Top 10 holders', 'Mint authority', 'Freeze authority', 'Honeypot check', 'Price action'].includes(c.title)).length;
+  const critical = checks.filter((c) => c.status === 'bad' && ['Liquidity', 'Top 10 holders', 'Mint authority', 'Freeze authority', 'Honeypot check', 'Price action', 'Rug status', 'Liquidity locked', 'Sell tax', 'Hidden owner', 'Sell restrictions'].includes(c.title)).length;
   const score = Math.min(100, Math.max(Math.round((risk / (total || 1)) * 100), critical ? 35 + critical * 12 : 0));
   const level = score < 25 ? 'Lower risk' : score < 45 ? 'Medium risk' : score < 65 ? 'High risk' : 'Extreme risk';
   return { checks, score, level };

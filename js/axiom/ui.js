@@ -418,7 +418,7 @@ export function createAxiom(root, { openStock }) {
             </div>
             ${s.description ? `<p class="ax-desc">${esc(s.description)}</p>` : ''}
             <div class="ax-socials">${[...(t.websites || []).map((u) => ['web', u]), ...(t.socials || []).map((x) => [x.type, x.url])].map(([k, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(k)} ↗</a>`).join('')}</div>
-            <p class="ax-disclaimer">Scores are a teaching aid built from public data. A low score does not make a memecoin safe.</p>
+            <p class="ax-disclaimer">Safety data: ${esc(s.source || 'unavailable')} · pool data: DexScreener. Scores are a teaching aid built from public data. A low score does not make a memecoin safe.</p>
           </div>
         </div>
       </div>`;

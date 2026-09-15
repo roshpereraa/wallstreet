@@ -222,30 +222,96 @@ export async function dexPulse(chain) {
 }
 
 // ------------------------------------------------ token scanner: pool stats + on-chain safety info
+// Security data: RugCheck for Solana, GoPlus for EVM chains (incl. Robinhood Chain), GeckoTerminal as a fallback.
+const GOPLUS_CHAINS = { eth: 1, bsc: 56, base: 8453, arbitrum: 42161, polygon_pos: 137, avax: 43114, optimism: 10, robinhood: 4663 };
+const yesNo = (v) => (v == null || v === '' ? null : v === true || v === '1' || v === 1 ? 'yes' : 'no');
+
+async function rugcheck(mint) {
+  const d = await get(`https://api.rugcheck.xyz/v1/tokens/${mint}/report`, 1);
+  const known = d.knownAccounts || {};
+  const isPool = (h) => ['AMM', 'LOCKER'].includes(known[h.owner]?.type || known[h.address]?.type);
+  const holders = (d.topHolders || []).filter((h) => !isPool(h));
+  const lp = (d.markets || []).map((m) => m.lp?.lpLockedPct).filter((v) => v != null);
+  return {
+    source: 'RugCheck',
+    holders: d.totalHolders ?? null,
+    top10: holders.length ? holders.slice(0, 10).reduce((a, h) => a + (h.pct || 0), 0) : null,
+    top10Note: 'excluding liquidity pools',
+    mintAuthority: d.mintAuthority ? 'yes' : 'no',
+    freezeAuthority: d.freezeAuthority ? 'yes' : 'no',
+    lpLocked: lp.length ? Math.max(...lp) : null,
+    rugged: !!d.rugged,
+    insiders: !!d.graphInsidersDetected,
+    risks: (d.risks || []).slice(0, 6).map((r) => ({ name: r.name, level: r.level, description: r.description })),
+    launchpad: d.launchpad?.name || d.deployPlatform || null,
+  };
+}
+
+async function goplus(chainId, address) {
+  const d = await get(`https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address.toLowerCase()}`, 1);
+  const r = Object.values(d.result || {})[0];
+  if (!r) return null;
+  const free = (r.holders || []).filter((h) => !Number(h.is_locked) && !Number(h.is_contract));
+  const pct = (v) => (v === '' || v == null ? null : Number(v) * 100);
+  return {
+    source: 'GoPlus',
+    holders: r.holder_count ? Number(r.holder_count) : null,
+    top10: free.length ? free.slice(0, 10).reduce((a, h) => a + Number(h.percent || 0), 0) * 100 : null,
+    top10Note: 'excluding locked & contract wallets',
+    mintAuthority: yesNo(r.is_mintable),
+    honeypot: yesNo(r.is_honeypot),
+    buyTax: pct(r.buy_tax),
+    sellTax: pct(r.sell_tax),
+    hiddenOwner: yesNo(r.hidden_owner),
+    openSource: yesNo(r.is_open_source),
+    cannotSellAll: yesNo(r.cannot_sell_all),
+    risks: [],
+  };
+}
+
+async function geckoInfo(network, token) {
+  const info = await get(`${GT}/networks/${network}/tokens/${token}/info`, 1).then((r) => r.data?.attributes);
+  if (!info) return null;
+  return {
+    source: 'GeckoTerminal',
+    score: info.gt_score ?? null,
+    holders: info.holders?.count ?? null,
+    top10: info.holders?.distribution_percentage?.top_10 != null ? Number(info.holders.distribution_percentage.top_10) : null,
+    top10Note: 'all wallets',
+    mintAuthority: info.mint_authority ?? null,
+    freezeAuthority: info.freeze_authority ?? null,
+    honeypot: info.is_honeypot === 'yes' || info.is_honeypot === 'no' ? info.is_honeypot : null,
+    risks: [],
+  };
+}
+
+async function security(network, token) {
+  if (!token) return null;
+  return cached(`sec:${network}:${token}`, 300000, async () => {
+    const tries = network === 'solana' ? [() => rugcheck(token)]
+      : GOPLUS_CHAINS[network] ? [() => goplus(GOPLUS_CHAINS[network], token)] : [];
+    tries.push(() => geckoInfo(network, token));
+    for (const t of tries) {
+      try { const r = await t(); if (r) return r; } catch { /* try the next source */ }
+    }
+    return null;
+  });
+}
+
 export async function dexScan(network, pool) {
   const d = await get(`${DS}/latest/dex/pairs/${GT_TO_DS[network] || network}/${pool}`);
   const p = d.pairs?.[0] || d.pair;
   if (!p) throw new Error('Pool not found');
   const q = fromScreener(p);
-  const info = await cached(`info:${network}:${q.token}`, 300000, () =>
-    get(`${GT}/networks/${network}/tokens/${q.token}/info`, 1).then((r) => r.data?.attributes || null)).catch(() => null);
+  const safety = await security(q.network, q.token).catch(() => null);
   return {
     ...q,
     txns: p.txns || {},
     priceChangeAll: p.priceChange || {},
     volumeAll: p.volume || {},
     websites: (p.info?.websites || []).map((w) => w.url).slice(0, 3),
-    socials: (p.info?.socials || []).map((s) => ({ type: s.type, url: s.url })).slice(0, 4),
+    socials: (p.info?.socials || []).map((x) => ({ type: x.type, url: x.url })).slice(0, 4),
     boosts: p.boosts?.active || 0,
-    safety: info ? {
-      score: info.gt_score ?? null,
-      holders: info.holders?.count ?? null,
-      top10: info.holders?.distribution_percentage?.top_10 != null ? Number(info.holders.distribution_percentage.top_10) : null,
-      mintAuthority: info.mint_authority ?? null,
-      freezeAuthority: info.freeze_authority ?? null,
-      honeypot: info.is_honeypot ?? null,
-      twitter: info.twitter_handle || null,
-      description: (info.description || '').slice(0, 280),
-    } : null,
+    safety,
   };
 }
