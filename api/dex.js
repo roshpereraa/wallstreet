@@ -1,4 +1,4 @@
-import { dexList, dexQuotes, dexLookup, dexChart, NETWORK_RE, ADDRESS_RE } from './_lib/dex.js';
+import { dexList, dexQuotes, dexLookup, dexChart, dexPulse, dexScan, NETWORK_RE, ADDRESS_RE } from './_lib/dex.js';
 import { json } from './_lib/yahoo.js';
 
 // On-chain memecoins, one function to stay inside Vercel's function limit:
@@ -6,6 +6,8 @@ import { json } from './_lib/yahoo.js';
 //   GET /api/dex?op=quotes&ids=robinhood:0xpool,solana:Pool...
 //   GET /api/dex?op=lookup&q=<contract address | name | ticker>
 //   GET /api/dex?op=chart&network=robinhood&pool=0x...&range=1d|5d|1mo|6mo|1y
+//   GET /api/dex?op=pulse&chain=solana|robinhood          (Axiom-style New / Final stretch / Migrated)
+//   GET /api/dex?op=scan&network=solana&pool=...  or  &q=<contract address>
 export async function GET(request) {
   const p = new URL(request.url).searchParams;
   const op = p.get('op');
@@ -28,6 +30,21 @@ export async function GET(request) {
       if (!NETWORK_RE.test(network || '') || !ADDRESS_RE.test(pool || '')) return json({ error: 'Pass network and pool' }, { status: 400 });
       const range = ['1d', '5d', '1mo', '6mo', '1y'].includes(p.get('range')) ? p.get('range') : '1d';
       return json(await dexChart(network, pool, range), { maxAge: range === '1d' ? 60 : 300 });
+    }
+    if (op === 'pulse') {
+      const chain = p.get('chain') === 'robinhood' ? 'robinhood' : 'solana';
+      return json({ chain, ...(await dexPulse(chain)) }, { maxAge: 30 });
+    }
+    if (op === 'scan') {
+      let network = p.get('network'), pool = p.get('pool');
+      const q = (p.get('q') || '').trim();
+      if (q) {
+        const best = (await dexLookup(q))[0];
+        if (!best) return json({ error: 'No pools found for that address' }, { status: 404 });
+        ({ network, pool } = best);
+      }
+      if (!NETWORK_RE.test(network || '') || !ADDRESS_RE.test(pool || '')) return json({ error: 'Pass network and pool, or q' }, { status: 400 });
+      return json(await dexScan(network, pool), { maxAge: 60 });
     }
     return json({ error: 'Unknown op' }, { status: 400 });
   } catch (e) {

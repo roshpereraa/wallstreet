@@ -52,6 +52,8 @@ export async function refresh() {
   return inflight;
 }
 
+export function storeQuotes(list = []) { store(list); listeners.forEach((fn) => fn(cache)); }
+
 function store(list = []) {
   for (const q of list) {
     if (!q || q.error) continue;
@@ -59,7 +61,10 @@ function store(list = []) {
       q.prevClose = q.price / (1 + q.changePct / 100);
       q.change = q.price - q.prevClose;
     }
-    cache.set(q.symbol, { ...cache.get(q.symbol), ...q });
+    // don't let a source with missing fields wipe values another source already provided
+    const next = { ...cache.get(q.symbol) };
+    for (const [k, v] of Object.entries(q)) if (v != null && !(k === 'liquidity' && v === 0 && next.liquidity)) next[k] = v;
+    cache.set(q.symbol, next);
     if (q.ticker) setTicker(q.symbol, q.ticker);
   }
 }

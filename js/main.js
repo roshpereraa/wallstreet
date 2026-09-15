@@ -107,13 +107,13 @@ function openLaptop(seat) {
   });
 }
 
-function openBoard(kind, view = 'markets') {
+function openBoard(kind, view = 'markets', axView, axArg) {
   if (mode !== 'view') return;
   mode = 'laptop';
   activeSeat = null;
   hint.hidden = true;
   document.body.classList.add('in-laptop');
-  terminal.open({ desk: DESKS[kind], symbol: DESKS[kind].symbols[0], who: null, view });
+  terminal.open({ desk: DESKS[kind], symbol: DESKS[kind].symbols[0], who: null, view, axView, axArg });
   startPolling(15000);
 }
 
@@ -160,6 +160,8 @@ helpEl.addEventListener('click', (e) => { if (e.target === helpEl || e.target.cl
 $('#dock').addEventListener('click', (e) => {
   const a = e.target.closest('[data-a]')?.dataset.a;
   if (a === 'memes' || a === 'stocks') openBoard(a);
+  else if (a === 'axiom') openBoard('memes', 'axiom', 'pulse');
+  else if (a === 'scanner') openBoard('memes', 'axiom', 'scanner');
   else if (a === 'portfolio') openBoard('memes', 'portfolio');
   else if (a === 'cli') openBoard('memes', 'cli');
   else if (a === 'radio') radio.toggle();

@@ -8,6 +8,7 @@ import { drawChart } from './chart.js';
 import { paper, START_CASH } from './paper.js';
 import { createCli } from './cli.js';
 import { radio } from './music.js';
+import { createAxiom } from './axiom/ui.js';
 
 const RANGES = [['1d', '24H'], ['5d', '7D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y']];
 const STOCK_RANGES = [['1d', '1D'], ['5d', '5D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y'], ['5y', '5Y']];
@@ -32,6 +33,7 @@ export function createTerminal(root, { onClose }) {
           <div class="lt-firm"><i class="lt-dot"></i><b class="lt-firm-name"></b><span class="lt-desk"></span></div>
           <nav class="lt-tabs" role="tablist">
             <button data-tab="markets" class="on">Markets</button>
+            <button data-tab="axiom" class="tab-axiom">Axiom Sim</button>
             <button data-tab="portfolio">Portfolio</button>
             <button data-tab="cli">Terminal</button>
           </nav>
@@ -83,6 +85,7 @@ export function createTerminal(root, { onClose }) {
           </aside>
         </section>
 
+        <section class="lt-view lt-axiom" data-view="axiom" hidden></section>
         <section class="lt-view lt-portfolio" data-view="portfolio" hidden></section>
         <section class="lt-view lt-cli" data-view="cli" hidden></section>
 
@@ -98,7 +101,7 @@ export function createTerminal(root, { onClose }) {
     ranges: $('.lt-ranges'), kinds: $('.lt-kinds'), canvas: $('.lt-chart canvas'), tip: $('.lt-tip'), msg: $('.lt-msg'),
     stats: $('.lt-stats'), panelTitle: $('.lt-panel-title'), panel: $('.lt-panel'), src: $('.lt-src'), upd: $('.lt-upd'),
     ticket: $('.lt-ticket'), tkUnit: $('.tk-unit'), tkInput: $('.tk-amount input'), tkChips: $('.tk-chips'), tkEst: $('.tk-est'), tkGo: $('.tk-go'), tkMsg: $('.tk-msg'),
-    portfolio: $('.lt-portfolio'), cliRoot: $('.lt-cli'),
+    portfolio: $('.lt-portfolio'), cliRoot: $('.lt-cli'), axRoot: $('.lt-axiom'),
   };
 
   let desk = DESKS.stocks, symbol = 'AAPL', range = '1d', kind = 'line', chart = null, hover = null;
@@ -150,7 +153,11 @@ export function createTerminal(root, { onClose }) {
   const cli = createCli(el.cliRoot, {
     resolve, lookup: dexLookup, quote: quoteNow, label, meta, paper, radio, feed: loadFeed,
     price: priceOf, get: (s) => quotes.get(s), open: openSymbol,
+    axiom: (v, arg) => { setTab('axiom', v, arg); },
   });
+
+  let axiom = null;
+  const ensureAxiom = () => (axiom ||= createAxiom(el.axRoot, { openStock: openSymbol }));
 
   // ------------------------------------------------ rendering: markets
   function renderTape() {
@@ -447,12 +454,15 @@ export function createTerminal(root, { onClose }) {
 
   paper.on(() => { renderEquity(); if (tab === 'portfolio') renderPortfolio(); renderTicket(); renderLists(); });
 
-  function setTab(t) {
+  function setTab(t, axView, axArg) {
+    if (tab === 'axiom' && t !== 'axiom') axiom?.close();
     tab = t;
     root.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     root.querySelectorAll('.lt-view').forEach((v) => (v.hidden = v.dataset.view !== t));
     if (t === 'portfolio') { watch(Object.keys(paper.account.positions)); refresh(); renderPortfolio(); }
     if (t === 'cli') cli.focus();
+    if (t === 'axiom') ensureAxiom().open(axView || 'pulse', axArg);
+    root.classList.toggle('ax-mode', t === 'axiom');
     if (t === 'markets') requestAnimationFrame(redraw);
   }
 
@@ -531,7 +541,7 @@ export function createTerminal(root, { onClose }) {
   root.addEventListener('click', async (e) => {
     const b = e.target.closest('button');
     if (!e.target.closest('.lt-search')) el.results.hidden = true;
-    if (!b || e.target.closest('.lt-ticket, .lt-portfolio, .lt-cli')) return;
+    if (!b || e.target.closest('.lt-ticket, .lt-portfolio, .lt-cli, .lt-axiom')) return;
     if (b.classList.contains('lt-close')) return onClose();
     if (b.dataset.tab) return setTab(b.dataset.tab);
     if (b.classList.contains('lt-radio')) return radio.toggle();
@@ -578,14 +588,14 @@ export function createTerminal(root, { onClose }) {
 
   return {
     get isOpen() { return open; },
-    open({ desk: d, symbol: s, who, view = 'markets' }) {
+    open({ desk: d, symbol: s, who, view = 'markets', axView, axArg }) {
       open = true;
       setDesk(d || DESKS.stocks);
       if (who) el.desk.textContent = `${desk.desk} · ${who.name}`;
       watch(Object.keys(paper.account.positions));
       renderEquity();
       select(s || desk.symbols[0]);
-      setTab(view);
+      setTab(view, axView, axArg);
       refresh();
       tickClock();
       clearInterval(clockTimer);
@@ -595,6 +605,7 @@ export function createTerminal(root, { onClose }) {
     },
     close() {
       open = false;
+      axiom?.close();
       clearInterval(chartTimer);
       clearInterval(clockTimer);
       el.results.hidden = true;

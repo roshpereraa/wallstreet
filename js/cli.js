@@ -1,6 +1,7 @@
 // Command-line terminal inside the laptop: quotes, CA lookups, feeds and paper orders by typing.
 import { fmtPrice, fmtPct, fmtUsd, fmtQty, fmtVol } from './market.js';
 import { START_CASH } from './paper.js';
+import { scan } from './axiom/scan.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -11,6 +12,8 @@ const HELP = [
   ['open <ticker|CA>', 'open the chart'],
   ['buy <ticker|CA> <$amount|qty>', 'paper buy · e.g. buy PEPE $250, buy AAPL 5'],
   ['sell <ticker|CA> <qty|$amount|50%|all>', 'paper sell'],
+  ['scan <CA|ticker>', 'Dex Scanner safety report (risk score + red flags)'],
+  ['axiom', 'open the Axiom trading sim (fake SOL)'],
   ['pf', 'portfolio and P&L'],
   ['history', 'recent paper trades'],
   ['pons · hood · axiom · majors', 'top of each meme feed'],
@@ -85,6 +88,24 @@ export function createCli(root, api) {
       api.open(found[0].symbol);
       print('Opened the chart in Markets.', 'dim');
     },
+    async scan([q]) {
+      if (!q) throw new Error('Paste a contract address or ticker: scan <CA>');
+      print('Scanning…', 'dim');
+      let target = q;
+      if (!q.startsWith('dex:')) {
+        const found = await api.lookup(q);
+        if (!found.length) throw new Error('No on-chain pools found for that.');
+        target = found[0].symbol;
+      }
+      const r = await scan({ symbol: target });
+      const cls = r.score < 45 ? 'up' : 'down';
+      print(`<b>${esc(r.token.ticker)}</b> on ${esc(r.token.network)}  risk <span class="${cls}">${r.score}/100 · ${esc(r.level)}</span>`);
+      r.checks.filter((c) => c.status !== 'ok').forEach((c) => print(`  ${c.status === 'bad' ? '<span class="down">✗</span>' : c.status === 'warn' ? '⚠' : '?'} ${esc(c.title)}: ${esc(c.detail)}`));
+      print('Full report opened in Axiom Sim → Dex Scanner.', 'dim');
+      api.axiom('scanner', target);
+    },
+    axiom() { api.axiom('pulse'); },
+
     async open([q]) {
       const { symbol } = await need(q);
       api.open(symbol);

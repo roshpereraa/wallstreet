@@ -192,3 +192,60 @@ export async function dexChart(network, pool, range = '1d') {
 }
 
 export const dsChain = (network) => GT_TO_DS[network] || network;
+
+// ------------------------------------------------ Axiom-style "Pulse" boards for the trading sim
+const PULSE = {
+  solana: {
+    fresh: { url: `${GT}/networks/solana/new_pools?page=1`, keep: (q) => (q.liquidity || 0) >= 500 },
+    stretch: { url: `${GT}/networks/solana/dexes/pump-fun/pools?page=1&sort=h24_volume_usd_desc`, keep: (q) => (q.marketCap || 0) >= 4000 },
+    migrated: { url: `${GT}/networks/solana/trending_pools?page=1`, keep: (q) => (q.liquidity || 0) >= 10000 && !/pump-fun/.test(q.dex) },
+  },
+  robinhood: {
+    fresh: { url: `${GT}/networks/robinhood/new_pools?page=1`, keep: (q) => (q.liquidity || 0) >= 200 },
+    stretch: { url: `${GT}/networks/robinhood/dexes/pons-v2-dex/pools?page=1&sort=h24_volume_usd_desc`, keep: () => true },
+    migrated: { url: `${GT}/networks/robinhood/trending_pools?page=1`, keep: (q) => (q.liquidity || 0) >= 10000 },
+  },
+};
+
+export async function dexPulse(chain) {
+  const cfg = PULSE[chain] || PULSE.solana;
+  return cached(`pulse:${chain}`, 30000, async () => {
+    const cols = await Promise.allSettled(Object.entries(cfg).map(async ([col, { url, keep }]) => {
+      const d = await get(url, 1);
+      return [col, (d.data || []).map(fromGecko).filter(keep).slice(0, 16)];
+    }));
+    const out = { fresh: [], stretch: [], migrated: [] };
+    for (const c of cols) if (c.status === 'fulfilled') out[c.value[0]] = c.value[1];
+    if (!out.fresh.length && !out.stretch.length && !out.migrated.length) throw new Error('Pulse unavailable');
+    return out;
+  });
+}
+
+// ------------------------------------------------ token scanner: pool stats + on-chain safety info
+export async function dexScan(network, pool) {
+  const d = await get(`${DS}/latest/dex/pairs/${GT_TO_DS[network] || network}/${pool}`);
+  const p = d.pairs?.[0] || d.pair;
+  if (!p) throw new Error('Pool not found');
+  const q = fromScreener(p);
+  const info = await cached(`info:${network}:${q.token}`, 300000, () =>
+    get(`${GT}/networks/${network}/tokens/${q.token}/info`, 1).then((r) => r.data?.attributes || null)).catch(() => null);
+  return {
+    ...q,
+    txns: p.txns || {},
+    priceChangeAll: p.priceChange || {},
+    volumeAll: p.volume || {},
+    websites: (p.info?.websites || []).map((w) => w.url).slice(0, 3),
+    socials: (p.info?.socials || []).map((s) => ({ type: s.type, url: s.url })).slice(0, 4),
+    boosts: p.boosts?.active || 0,
+    safety: info ? {
+      score: info.gt_score ?? null,
+      holders: info.holders?.count ?? null,
+      top10: info.holders?.distribution_percentage?.top_10 != null ? Number(info.holders.distribution_percentage.top_10) : null,
+      mintAuthority: info.mint_authority ?? null,
+      freezeAuthority: info.freeze_authority ?? null,
+      honeypot: info.is_honeypot ?? null,
+      twitter: info.twitter_handle || null,
+      description: (info.description || '').slice(0, 280),
+    } : null,
+  };
+}
