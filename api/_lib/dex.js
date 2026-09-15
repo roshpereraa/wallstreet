@@ -171,6 +171,13 @@ export async function dexLookup(q) {
 }
 
 const FRAMES = {
+  // Axiom-style timeframes (candle size)
+  '1m': ['minute', 1, 300],
+  '5m': ['minute', 5, 288],
+  '15m': ['minute', 15, 200],
+  '1h': ['hour', 1, 200],
+  '1D': ['day', 1, 180],
+  // range-style keys used by the Markets tab
   '1d': ['minute', 15, 96],
   '5d': ['hour', 1, 168],
   '1mo': ['hour', 4, 180],
@@ -181,7 +188,7 @@ const FRAMES = {
 export async function dexChart(network, pool, range = '1d') {
   const [tf, agg, limit] = FRAMES[range] || FRAMES['1d'];
   const [candles, info] = await Promise.all([
-    cached(`ohlcv:${network}:${pool}:${range}`, range === '1d' ? 45000 : 240000, () =>
+    cached(`ohlcv:${network}:${pool}:${range}`, ['1m', '5m'].includes(range) ? 15000 : range === '1d' || range === '15m' ? 45000 : 240000, () =>
       get(`${GT}/networks/${network}/pools/${pool}/ohlcv/${tf}?aggregate=${agg}&limit=${limit}&currency=usd`, 2)),
     dexQuotes([`${network}:${pool}`]).then((q) => q[0]).catch(() => null),
   ]);
@@ -244,6 +251,7 @@ async function rugcheck(mint) {
     insiders: !!d.graphInsidersDetected,
     risks: (d.risks || []).slice(0, 6).map((r) => ({ name: r.name, level: r.level, description: r.description })),
     launchpad: d.launchpad?.name || d.deployPlatform || null,
+    topHolders: holders.slice(0, 15).map((h) => ({ address: h.owner || h.address, pct: h.pct, insider: !!h.insider })),
   };
 }
 
@@ -265,6 +273,7 @@ async function goplus(chainId, address) {
     hiddenOwner: yesNo(r.hidden_owner),
     openSource: yesNo(r.is_open_source),
     cannotSellAll: yesNo(r.cannot_sell_all),
+    topHolders: (r.holders || []).slice(0, 15).map((h) => ({ address: h.address, pct: Number(h.percent || 0) * 100, locked: !!Number(h.is_locked), contract: !!Number(h.is_contract) })),
     risks: [],
   };
 }
@@ -314,4 +323,24 @@ export async function dexScan(network, pool) {
     boosts: p.boosts?.active || 0,
     safety,
   };
+}
+
+// Latest trades in a pool (GeckoTerminal keeps the last 300 within 24h). Used for the live
+// trades feed and for building 1-second candles, which no free candle API offers.
+export async function dexTrades(network, pool) {
+  return cached(`trades:${network}:${pool}`, 4000, async () => {
+    const d = await get(`${GT}/networks/${network}/pools/${pool}/trades`, 1);
+    return (d.data || []).map(({ attributes: a }) => {
+      const buy = a.kind === 'buy';
+      return {
+        t: Math.floor(Date.parse(a.block_timestamp) / 1000),
+        side: buy ? 'buy' : 'sell',
+        usd: Number(a.volume_in_usd),
+        tokens: Number(buy ? a.to_token_amount : a.from_token_amount),
+        price: Number(buy ? a.price_to_in_usd : a.price_from_in_usd),
+        maker: a.tx_from_address,
+        tx: a.tx_hash,
+      };
+    }).filter((x) => x.price > 0);
+  });
 }

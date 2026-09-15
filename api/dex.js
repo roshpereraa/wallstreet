@@ -1,4 +1,4 @@
-import { dexList, dexQuotes, dexLookup, dexChart, dexPulse, dexScan, NETWORK_RE, ADDRESS_RE } from './_lib/dex.js';
+import { dexList, dexQuotes, dexLookup, dexChart, dexPulse, dexScan, dexTrades, NETWORK_RE, ADDRESS_RE } from './_lib/dex.js';
 import { json } from './_lib/yahoo.js';
 
 // On-chain memecoins, one function to stay inside Vercel's function limit:
@@ -6,6 +6,7 @@ import { json } from './_lib/yahoo.js';
 //   GET /api/dex?op=quotes&ids=robinhood:0xpool,solana:Pool...
 //   GET /api/dex?op=lookup&q=<contract address | name | ticker>
 //   GET /api/dex?op=chart&network=robinhood&pool=0x...&range=1d|5d|1mo|6mo|1y
+//   GET /api/dex?op=trades&network=solana&pool=...            (latest 300 trades)
 //   GET /api/dex?op=pulse&chain=solana|robinhood          (Axiom-style New / Final stretch / Migrated)
 //   GET /api/dex?op=scan&network=solana&pool=...  or  &q=<contract address>
 export async function GET(request) {
@@ -18,7 +19,7 @@ export async function GET(request) {
     }
     if (op === 'quotes') {
       const ids = (p.get('ids') || '').split(',').filter(Boolean).slice(0, 60);
-      return json({ quotes: await dexQuotes(ids) }, { maxAge: 20 });
+      return json({ quotes: await dexQuotes(ids) }, { maxAge: p.get('fresh') ? 2 : 20 });
     }
     if (op === 'lookup') {
       const q = (p.get('q') || '').trim().slice(0, 80);
@@ -28,8 +29,13 @@ export async function GET(request) {
     if (op === 'chart') {
       const network = p.get('network'), pool = p.get('pool');
       if (!NETWORK_RE.test(network || '') || !ADDRESS_RE.test(pool || '')) return json({ error: 'Pass network and pool' }, { status: 400 });
-      const range = ['1d', '5d', '1mo', '6mo', '1y'].includes(p.get('range')) ? p.get('range') : '1d';
-      return json(await dexChart(network, pool, range), { maxAge: range === '1d' ? 60 : 300 });
+      const range = ['1m', '5m', '15m', '1h', '1D', '1d', '5d', '1mo', '6mo', '1y'].includes(p.get('range')) ? p.get('range') : '1d';
+      return json(await dexChart(network, pool, range), { maxAge: ['1m', '5m'].includes(range) ? 10 : ['1d', '15m'].includes(range) ? 45 : 300 });
+    }
+    if (op === 'trades') {
+      const network = p.get('network'), pool = p.get('pool');
+      if (!NETWORK_RE.test(network || '') || !ADDRESS_RE.test(pool || '')) return json({ error: 'Pass network and pool' }, { status: 400 });
+      return json({ trades: await dexTrades(network, pool) }, { maxAge: 4 });
     }
     if (op === 'pulse') {
       const chain = p.get('chain') === 'robinhood' ? 'robinhood' : 'solana';

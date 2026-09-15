@@ -157,7 +157,7 @@ export function createTerminal(root, { onClose }) {
   });
 
   let axiom = null;
-  const ensureAxiom = () => (axiom ||= createAxiom(el.axRoot, { openStock: openSymbol }));
+  const ensureAxiom = () => (axiom ||= createAxiom(el.axRoot));
 
   // ------------------------------------------------ rendering: markets
   function renderTape() {
@@ -333,6 +333,8 @@ export function createTerminal(root, { onClose }) {
 
   function select(s) {
     if (!s) return;
+    // on-chain tokens open in the Axiom-style trading page (candles 1s–1D, PnL, instant trade)
+    if (isDex(s)) { setTab('axiom', 'token', s); return; }
     symbol = s;
     watch([s]);
     el.tkMsg.textContent = '';
