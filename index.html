@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0c10">
+  <meta name="theme-color" content="#07040f">
   <meta name="description" content="A live 3D trading floor: meme coins on one side, the stock exchange on the other. Click any computer for live market data.">
   <title>Wall St.</title>
   <meta property="og:type" content="website">
@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Monoton&family=VT323&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
     {
@@ -31,35 +31,43 @@
   <canvas id="scene" aria-label="A Wall Street trading floor, an interactive 3D scene"></canvas>
 
   <div id="hud">
-    <div id="place"><b>Wall St.</b><span>Live trading floor · New York</span></div>
+    <div id="place"><b>WALL ST.</b><span>neon trading room · live</span></div>
     <nav id="dock" aria-label="Actions">
-      <button data-a="memes" title="Open the meme coin board"><i class="dot memes"></i><span>Meme coins</span></button>
-      <button data-a="stocks" title="Open the stock exchange board"><i class="dot stocks"></i><span>Stocks</span></button>
-      <button data-a="help" title="How it works (?)"><i>?</i><span>Help</span></button>
+      <button data-a="memes" title="Meme coin desk: majors, Pons, Robinhood Chain, Axiom"><i class="dot memes"></i><span>Memes</span></button>
+      <button data-a="stocks" title="Stock exchange desk"><i class="dot stocks"></i><span>Stocks</span></button>
+      <button data-a="portfolio" title="Paper trading portfolio"><i>◧</i><span>Portfolio</span></button>
+      <button data-a="cli" title="Command-line terminal"><i>&gt;_</i><span>Terminal</span></button>
+      <button data-a="radio" class="radio-btn" title="Lo-fi radio"><i class="eq"><b></b><b></b><b></b></i><span>Music off</span></button>
+      <button data-a="help" title="How it works (?)"><i>?</i></button>
     </nav>
     <div id="notice" role="note"><i></i>Click on any computer to see the live market</div>
-    <div class="side-label memes">← Meme coin desk</div>
-    <div class="side-label stocks">Stock exchange desk →</div>
+    <div class="side-label memes">← Meme coins</div>
+    <div class="side-label stocks">Stocks →</div>
     <div id="tape" aria-label="Live prices"></div>
   </div>
   <div id="hint" hidden></div>
+  <div id="lofi" aria-hidden="true"></div>
 
   <div id="help" hidden role="dialog" aria-label="How it works">
     <div class="help-card">
       <header><h2>How it works</h2><button data-close aria-label="Close">✕</button></header>
       <ul class="help-taps">
-        <li><b>Left side</b> the meme coin desk, live from CoinGecko</li>
-        <li><b>Right side</b> the stock exchange desk, live from Yahoo Finance</li>
-        <li><b>Any computer</b> click it to open that trader's screen</li>
-        <li><b>Wall boards</b> open a desk overview</li>
+        <li><b>Left desk</b> meme coins: majors, pons.family launches, Robinhood Chain trending, and Solana pairs you can open on Axiom</li>
+        <li><b>Right desk</b> the stock exchange, live from Yahoo Finance</li>
+        <li><b>Any computer</b> opens charts, search (paste a contract address) and the order ticket</li>
+        <li><b>Portfolio</b> your paper account: $100,000 of play money for stocks and memes</li>
+        <li><b>Record player</b> or the Music button toggles the lo-fi radio</li>
       </ul>
-      <h3>Inside a computer</h3>
+      <h3>Terminal commands</h3>
       <dl class="keys">
-        <dt>/</dt><dd>search coins or tickers</dd>
-        <dt>↑ ↓</dt><dd>move through the watchlist</dd>
-        <dt>Esc</dt><dd>back to the floor</dd>
+        <dt>price NVDA</dt><dd>latest price</dd>
+        <dt>ca 0x…</dt><dd>look up a contract address</dd>
+        <dt>buy PEPE $250</dt><dd>paper buy</dd>
+        <dt>sell AAPL all</dt><dd>paper sell</dd>
+        <dt>pons · hood · axiom</dt><dd>meme feeds</dd>
+        <dt>pf</dt><dd>portfolio</dd>
       </dl>
-      <p class="help-note">Prices can be delayed. Crypto and meme coins are extremely volatile. Nothing here is investment advice.</p>
+      <p class="help-note">Paper trading only: no wallets, no real money. Prices can be delayed. On-chain tokens are extremely risky and many are scams. Nothing here is investment advice.</p>
     </div>
   </div>
 
@@ -68,11 +76,11 @@
   <div id="boot">
     <div class="boot-glow"></div>
     <div class="boot-card">
-      <p class="boot-kicker">New York · Trading Floor</p>
-      <h1>Wall St.</h1>
-      <p class="boot-sub">A live trading floor. Meme coins on one side, the stock exchange on the other. Click any computer to see the market.</p>
-      <button id="enter" class="boot-btn" disabled>View the floor</button>
-      <p class="boot-keys">Live data · CoinGecko &amp; Yahoo Finance</p>
+      <p class="boot-kicker">lo-fi beats to trade to</p>
+      <h1>WALL ST.</h1>
+      <p class="boot-sub">A tiny neon trading room. Meme coins on one side, stocks on the other. Live charts, contract-address search and paper trading.</p>
+      <button id="enter" class="boot-btn" disabled>Enter the room</button>
+      <p class="boot-keys">Pons · Robinhood Chain · Axiom · CoinGecko · Yahoo Finance</p>
     </div>
     <div id="boot-tape" class="boot-tape"></div>
     <noscript><p class="noscript">Wall St. needs JavaScript and WebGL.</p></noscript>

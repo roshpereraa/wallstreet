@@ -3,6 +3,11 @@ import { buildRoom } from './room.js';
 import { createTerminal } from './terminal.js';
 import { DESKS, INDICES, label } from './data.js';
 import { quotes, watch, onQuotes, refresh, startPolling, fmtPrice, fmtPct, tone } from './market.js';
+import { radio } from './music.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // ---------------------------------------------------------------- setup
 const isTouch = matchMedia('(pointer: coarse)').matches;
@@ -15,10 +20,10 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
+renderer.toneMappingExposure = 1.15;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#0b0c10');
+scene.background = new THREE.Color('#07040f');
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 200);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 function canvasTex(c) {
@@ -35,12 +40,22 @@ const hint = $('#hint'), helpEl = $('#help'), tapeEl = $('#tape');
 // ---------------------------------------------------------------- room
 const hits = [];
 const tag = (obj, action, data) => obj.traverse((o) => { if (o.isMesh) { o.userData.action = action; o.userData.data = data; hits.push(o); } });
+// neon signs are painted with web fonts: wait for them before building textures
+await Promise.race([Promise.all(['40px Monoton', '40px VT323'].map((f) => document.fonts.load(f))), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
 const room = buildRoom({ canvasTex, lowPower, tag, onShout: (seat, text) => shout(seat, text) });
 scene.add(room.group);
 
+// neon glow
+const composer = lowPower ? null : new EffectComposer(renderer);
+if (composer) {
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.5, 0.86));
+  composer.addPass(new OutputPass());
+}
+
 // ---------------------------------------------------------------- overview camera
 // A fixed view of the whole floor that drifts gently; the pointer adds a little parallax.
-const LOOK = new THREE.Vector3(0, 1.2, -2.5);
+const LOOK = new THREE.Vector3(0, 1.3, -1.4);
 const view = { dist: 30, height: 15 };
 function fitView() {
   const a = innerWidth / innerHeight;
@@ -48,10 +63,10 @@ function fitView() {
   camera.fov = a < 0.8 ? 58 : 42;
   camera.updateProjectionMatrix();
   // pull back until the room's width fits the screen
-  const halfW = 17, vFov = THREE.MathUtils.degToRad(camera.fov);
+  const halfW = 11.5, vFov = THREE.MathUtils.degToRad(camera.fov);
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * a);
-  view.dist = Math.max(20, halfW / Math.tan(hFov / 2));
-  view.height = view.dist * 0.5;
+  view.dist = Math.max(14, halfW / Math.tan(hFov / 2));
+  view.height = view.dist * 0.52;
 }
 fitView();
 const pointer = new THREE.Vector2();
@@ -92,13 +107,13 @@ function openLaptop(seat) {
   });
 }
 
-function openBoard(kind) {
+function openBoard(kind, view = 'markets') {
   if (mode !== 'view') return;
   mode = 'laptop';
   activeSeat = null;
   hint.hidden = true;
   document.body.classList.add('in-laptop');
-  terminal.open({ desk: DESKS[kind], symbol: DESKS[kind].symbols[0], who: null });
+  terminal.open({ desk: DESKS[kind], symbol: DESKS[kind].symbols[0], who: null, view });
   startPolling(15000);
 }
 
@@ -145,6 +160,9 @@ helpEl.addEventListener('click', (e) => { if (e.target === helpEl || e.target.cl
 $('#dock').addEventListener('click', (e) => {
   const a = e.target.closest('[data-a]')?.dataset.a;
   if (a === 'memes' || a === 'stocks') openBoard(a);
+  else if (a === 'portfolio') openBoard('memes', 'portfolio');
+  else if (a === 'cli') openBoard('memes', 'cli');
+  else if (a === 'radio') radio.toggle();
   else if (a === 'help') toggleHelp();
 });
 
@@ -154,6 +172,12 @@ function renderTape(el, symbols) {
     return `<span><b>${label(s)}</b> ${q ? fmtPrice(q.price, s) : '···'} <em style="color:${tone(q?.changePct)}">${q ? fmtPct(q.changePct) : ''}</em></span>`;
   }).join('');
 }
+radio.on((r) => {
+  const btn = $('.radio-btn');
+  btn.classList.toggle('on', r.playing);
+  btn.querySelector('span').textContent = r.playing ? r.track.name : 'Music off';
+});
+
 const hudTape = [...DESKS.memes.symbols.slice(0, 5), ...INDICES.slice(0, 5)];
 onQuotes(() => { renderTape(tapeEl, hudTape); renderTape($('#boot-tape'), hudTape); });
 
@@ -179,6 +203,7 @@ function pick(x, y) {
 function describe(o) {
   const { action, data } = o.userData;
   if (action === 'board') return `${DESKS[data].name} board · open`;
+  if (action === 'radio') return radio.playing ? 'Lo-fi radio · stop' : 'Lo-fi radio · play';
   if (action === 'seat') {
     const s = room.seats[data];
     return `${s.who.name} · ${label(s.symbol)} · open computer`;
@@ -204,6 +229,7 @@ canvas.addEventListener('click', (e) => {
   if (!o) return;
   if (o.userData.action === 'seat') openLaptop(room.seats[o.userData.data]);
   else if (o.userData.action === 'board') openBoard(o.userData.data);
+  else if (o.userData.action === 'radio') radio.toggle();
 });
 
 // ---------------------------------------------------------------- boot
@@ -253,7 +279,7 @@ function frame(now) {
   }
   camera.lookAt(camLook);
 
-  if (mode !== 'laptop') room.update(t, dt, quotes, now);
+  if (mode !== 'laptop') room.update(t, dt, quotes, now, radio);
 
   bubbles.forEach((b) => {
     if (b.el.hidden) return;
@@ -265,12 +291,13 @@ function frame(now) {
     b.el.style.top = `${((1 - hv.y) / 2) * innerHeight}px`;
   });
 
-  if (mode !== 'laptop') renderer.render(scene, camera);
+  if (mode !== 'laptop') composer ? composer.render() : renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
 
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
+  composer?.setSize(innerWidth, innerHeight);
   fitView();
 });
 

@@ -2,103 +2,179 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DESKS, SHOUTS, trader, label } from './data.js';
 import { person, sit, addPhone, mat, walk } from './avatar.js';
-import { carpetCanvas, skylineCanvas, drawBoard, drawLaptop, signPlate } from './textures.js';
+import { gridFloor, neonSkyline, neonSign, drawBoard, drawLaptop } from './textures.js';
 
-// One open-plan trading floor, shown as a cut-away (no ceiling, no front wall):
+// A small neon lo-fi trading room, shown as a cut-away (no ceiling, no front wall):
 // the meme coin desk on the left, the stock exchange desk on the right.
-export const RW = 18, RD = 11, RH = 5.2;
+export const RW = 10, RD = 6.5, RH = 4.4;
+
+const PINK = DESKS.memes.color, CYAN = DESKS.stocks.color, PURPLE = '#8b5cff';
+const neonMat = (color, intensity = 3) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false });
 
 export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   const g = new THREE.Group();
   const seats = [];
+  const tube = (w, h, d, color, x, y, z, intensity) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), neonMat(color, intensity));
+    m.position.set(x, y, z);
+    g.add(m);
+    return m;
+  };
 
-  // ------------------------------------------------ lights
-  g.add(new THREE.HemisphereLight('#e8eeff', '#3a3028', 2.4));
-  const key = new THREE.DirectionalLight('#fff3e0', 1.8);
-  key.position.set(6, 18, 14);
+  // ------------------------------------------------ lights: dim room, coloured pools
+  g.add(new THREE.HemisphereLight('#6b5cff', '#1a0b24', 1.1));
+  const key = new THREE.DirectionalLight('#c9b8ff', 0.9);
+  key.position.set(4, 12, 10);
   key.castShadow = !lowPower;
-  key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -22, right: 22, top: 16, bottom: -16, near: 1, far: 60 });
-  key.shadow.bias = -0.0006;
+  key.shadow.mapSize.set(1024, 1024);
+  Object.assign(key.shadow.camera, { left: -12, right: 12, top: 9, bottom: -9, near: 1, far: 40 });
+  key.shadow.bias = -0.0008;
   key.shadow.normalBias = 0.04;
   g.add(key, key.target);
+  [[-1, PINK], [1, CYAN]].forEach(([s, c]) => {
+    const l = new THREE.PointLight(c, 26, 14, 1.5);
+    l.position.set(s * 5, 3.2, -3);
+    g.add(l);
+  });
+  const lampLight = new THREE.PointLight('#ffb36b', 6, 6, 1.6);
+  lampLight.position.set(0, 1.6, -5.2);
+  g.add(lampLight);
 
   // ------------------------------------------------ shell
-  const halves = [['memes', -1, '#16211a'], ['stocks', 1, '#1b2230']];
-  halves.forEach(([kind, s, tint]) => {
-    const t = canvasTex(carpetCanvas(tint));
+  [[-1, PINK, '#0d0819'], [1, CYAN, '#080b1a']].forEach(([s, line, bg]) => {
+    const t = canvasTex(gridFloor(line, bg));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(5, 6);
-    const f = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD * 2), new THREE.MeshStandardMaterial({ map: t, roughness: 1 }));
+    t.repeat.set(5, 6.5);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD * 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.2 }));
     f.rotation.x = -Math.PI / 2;
     f.position.set((s * RW) / 2, 0, 0);
     f.receiveShadow = true;
     g.add(f);
-    const light = new THREE.PointLight(DESKS[kind].color, 30, 22, 1.4);
-    light.position.set(s * 9, 3.6, -RD + 2);
-    g.add(light);
   });
-  // floor edge so the cut-away reads as a solid slab
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.6, 0.5, RD * 2 + 0.6), mat('#0d0e12'));
-  slab.position.set(0, -0.26, 0);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.5, 0.5, RD * 2 + 0.5), mat('#07050f'));
+  slab.position.y = -0.26;
   g.add(slab);
-  // centre line between the two desks
-  const divider = new THREE.Mesh(new THREE.PlaneGeometry(0.08, RD * 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.25 }));
-  divider.rotation.x = -Math.PI / 2;
-  divider.position.y = 0.01;
-  g.add(divider);
+  // neon edge around the cut-away floor
+  tube(RW * 2 + 0.5, 0.05, 0.05, PURPLE, 0, 0.01, RD + 0.26, 2.5);
+  tube(0.05, 0.05, RD * 2 + 0.5, PINK, -RW - 0.26, 0.01, 0, 2.5);
+  tube(0.05, 0.05, RD * 2 + 0.5, CYAN, RW + 0.26, 0.01, 0, 2.5);
+  // centre divider line
+  tube(0.04, 0.012, RD * 2, PURPLE, 0, 0.01, 0, 1.6);
 
-  const wallM = mat('#262a33', { roughness: 0.9 });
-  const back = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.6, RH, 0.3), wallM);
-  back.position.set(0, RH / 2, -RD - 0.15);
+  const wallM = mat('#130d24', { roughness: 0.85 });
+  const back = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.5, RH, 0.25), wallM);
+  back.position.set(0, RH / 2, -RD - 0.13);
   back.receiveShadow = true;
   g.add(back);
-  const skyTex = canvasTex(skylineCanvas());
-  [-1, 1].forEach((s) => {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(0.3, RH, RD * 2 + 0.3), wallM);
-    side.position.set(s * (RW + 0.15), RH / 2, 0);
+  tube(RW * 2 + 0.5, 0.06, 0.06, PURPLE, 0, RH, -RD + 0.02, 3);
+
+  const skyTex = canvasTex(neonSkyline());
+  [[-1, PINK], [1, CYAN]].forEach(([s, color]) => {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.25, RH, RD * 2 + 0.25), wallM);
+    side.position.set(s * (RW + 0.13), RH / 2, 0);
     side.receiveShadow = true;
     g.add(side);
-    for (let i = 0; i < 3; i++) {
-      const win = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 2.8), new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false }));
-      win.position.set(s * (RW - 0.01), 2.8, -7 + i * 6.5);
-      win.rotation.y = -s * Math.PI / 2;
-      g.add(win);
-    }
-    const band = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, RD * 2), new THREE.MeshStandardMaterial({ color: s < 0 ? DESKS.memes.color : DESKS.stocks.color, emissive: s < 0 ? DESKS.memes.color : DESKS.stocks.color, emissiveIntensity: 1.5 }));
-    band.position.set(s * (RW - 0.02), 0.9, 0);
-    g.add(band);
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 2.4), new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false }));
+    win.position.set(s * (RW - 0.01), 2.5, 0.8);
+    win.rotation.y = -s * Math.PI / 2;
+    g.add(win);
+    for (const dz of [-3.75, 0, 3.75]) tube(0.05, 2.5, 0.06, '#1b1030', s * (RW - 0.04), 2.5, 0.8 + dz, 0.2);
+    tube(0.05, 0.05, RD * 2, color, s * (RW - 0.03), RH, 0, 3);
+    tube(0.05, 0.05, RD * 2, color, s * (RW - 0.03), 0.05, 0, 3);
   });
 
-  // ------------------------------------------------ wall boards + hanging signs
+  // ------------------------------------------------ wall boards + neon signs
   const boards = [];
-  halves.forEach(([kind, s]) => {
+  [['memes', -1], ['stocks', 1]].forEach(([kind, s]) => {
     const desk = DESKS[kind];
-    const c = Object.assign(document.createElement('canvas'), { width: lowPower ? 1024 : 1600, height: lowPower ? 360 : 560 });
+    const c = Object.assign(document.createElement('canvas'), { width: lowPower ? 1024 : 1400, height: lowPower ? 360 : 490 });
     const tex = canvasTex(c);
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(13.6, 4.76), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-    board.position.set(s * 9, 2.75, -RD + 0.09);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 2.6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: '#d8d0ff' }));
+    board.position.set(s * 5, 2.35, -RD + 0.06);
     g.add(board);
     tag(board, 'board', kind);
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(14, 5.1, 0.14), mat('#08090b', { metalness: 0.6 }));
-    frame.position.set(s * 9, 2.75, -RD - 0.02);
-    g.add(frame);
+    tube(7.6, 0.04, 0.04, desk.color, s * 5, 3.68, -RD + 0.06, 3);
+    tube(7.6, 0.04, 0.04, desk.color, s * 5, 1.02, -RD + 0.06, 3);
     boards.push({ desk, c, ctx: c.getContext('2d'), tex });
 
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.2), new THREE.MeshBasicMaterial({ map: canvasTex(signPlate(desk.name, desk.color, kind === 'memes' ? 'LIVE · COINGECKO' : 'LIVE · NYSE · NASDAQ')), toneMapped: false, side: THREE.DoubleSide }));
-    plate.position.set(s * 9, RH + 0.55, -RD + 0.05);
-    g.add(plate);
-    tag(plate, 'board', kind);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: canvasTex(neonSign(kind === 'memes' ? 'MEME COINS' : 'STOCKS', desk.color, { backing: false })), transparent: true, toneMapped: false, depthWrite: false }));
+    sign.position.set(s * 5, RH + 0.7, -RD + 0.1);
+    g.add(sign);
+    tag(sign, 'board', kind);
+  });
+  // side-wall neon slogans
+  [[-1, 'WAGMI', PINK], [1, 'BUY THE DIP', CYAN]].forEach(([s, text, color]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: canvasTex(neonSign(text, color, { backing: false, size: 0.42 })), transparent: true, toneMapped: false, depthWrite: false }));
+    m.position.set(s * (RW - 0.03), 4.05, -3.6);
+    m.rotation.y = -s * Math.PI / 2;
+    g.add(m);
   });
 
-  // ------------------------------------------------ desks
-  const rowsZ = [2.8, -3.6];
-  const perRow = 3, seatGap = 3.4, segLen = perRow * seatGap;
+  // ------------------------------------------------ lo-fi corner: record player, lamp, plant
+  const radioGroup = new THREE.Group();
+  radioGroup.position.set(0, 0, -RD + 0.7);
+  g.add(radioGroup);
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.6), mat('#3a2340', { roughness: 0.6 }));
+  cabinet.position.y = 0.4;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.5), mat('#1a1222', { roughness: 0.4 }));
+  deck.position.y = 0.85;
+  const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.012, 32), mat('#0a0a0c', { roughness: 0.25, metalness: 0.3 }));
+  vinyl.position.set(-0.2, 0.91, 0);
+  const labelDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.014, 20), neonMat(PINK, 1.5));
+  labelDisc.position.copy(vinyl.position).add(new THREE.Vector3(0, 0.002, 0));
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.3), mat('#c9c9d6', { metalness: 0.8, roughness: 0.3 }));
+  arm.position.set(0.1, 0.93, -0.02);
+  arm.rotation.y = 0.5;
+  const speakers = [-0.9, 0.9].map((x) => {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), mat('#241634'));
+    sp.position.set(x, 0.3, 0.05);
+    const cone = new THREE.Mesh(new THREE.CircleGeometry(0.12, 20), neonMat(x < 0 ? PINK : CYAN, 0.8));
+    cone.position.set(0, 0.05, 0.201);
+    sp.add(cone);
+    radioGroup.add(sp);
+    return sp;
+  });
+  radioGroup.add(cabinet, deck, vinyl, labelDisc, arm);
+  radioGroup.traverse((o) => { if (o.isMesh) o.castShadow = !lowPower; });
+  tag(radioGroup, 'radio', 0);
 
-  const deskM = mat('#d9d3ca', { roughness: 0.5 });
-  const legM = mat('#2a2d33', { metalness: 0.6, roughness: 0.4 });
-  const laptopM = mat('#b9bdc4', { metalness: 0.7, roughness: 0.3 });
-  const chairM = mat('#15161a', { roughness: 0.6 });
+  const lamp = new THREE.Group();
+  lamp.position.set(-1.9, 0, -RD + 0.6);
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.2, 16), mat('#2a1a3a'));
+  lampBase.position.y = 0.1;
+  const lava = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.45, 6, 16), new THREE.MeshStandardMaterial({ color: '#ff6fd0', emissive: '#ff3ea5', emissiveIntensity: 1.2, transparent: true, opacity: 0.85, toneMapped: false }));
+  lava.position.y = 0.55;
+  const blobs = [0, 1, 2].map(() => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), neonMat('#ffd166', 2));
+    lava.add(b);
+    return b;
+  });
+  lamp.add(lampBase, lava);
+  g.add(lamp);
+
+  const plant = new THREE.Group();
+  plant.position.set(1.9, 0, -RD + 0.6);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.36, 16), mat('#5b2e6e'));
+  pot.position.y = 0.18;
+  plant.add(pot);
+  const leafM = mat('#3fbf7f', { roughness: 0.7 });
+  for (let i = 0; i < 9; i++) {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.6, 4), leafM);
+    const a = (i / 9) * Math.PI * 2, tilt = 0.25 + (i % 3) * 0.15;
+    leaf.position.set(Math.cos(a) * 0.05, 0.62, Math.sin(a) * 0.05);
+    leaf.rotation.set(Math.sin(a) * tilt, 0, -Math.cos(a) * tilt);
+    plant.add(leaf);
+  }
+  g.add(plant);
+
+  // ------------------------------------------------ desks: two rows of two on each side
+  const rowsZ = [1.6, -2.4];
+  const perRow = 2, seatGap = 3, segLen = perRow * seatGap;
+
+  const deskM = mat('#1d1433', { roughness: 0.35, metalness: 0.3 });
+  const legM = mat('#2a2340', { metalness: 0.6, roughness: 0.4 });
+  const laptopM = mat('#9a93b8', { metalness: 0.7, roughness: 0.3 });
+  const chairM = mat('#221733', { roughness: 0.6 });
   const geo = {
     lapBase: new THREE.BoxGeometry(0.4, 0.025, 0.28),
     lapLid: new THREE.BoxGeometry(0.4, 0.27, 0.014),
@@ -111,7 +187,6 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   const hitGeo = new THREE.BoxGeometry(seatGap * 0.9, 2, 2.4);
   const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
-  // one live texture per instrument, shared by the laptops showing it
   const screens = new Map();
   const screenFor = (symbol) => {
     if (!screens.has(symbol)) {
@@ -122,24 +197,22 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     return screens.get(symbol);
   };
 
-  halves.forEach(([kind, s]) => {
+  [['memes', -1], ['stocks', 1]].forEach(([kind, s]) => {
     const desk = DESKS[kind];
-    const x0 = s < 0 ? -RW + 3.2 : RW - 3.2 - segLen;
+    const x0 = s < 0 ? -RW + 2 : RW - 2 - segLen;
     rowsZ.forEach((rz) => {
-      const top = new THREE.Mesh(new THREE.BoxGeometry(segLen, 0.07, 1.25), deskM);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(segLen, 0.07, 1.2), deskM);
       top.position.set(x0 + segLen / 2, 0.76, rz);
       top.castShadow = top.receiveShadow = true;
       g.add(top);
+      // neon underglow strip on the desk edge
+      tube(segLen, 0.025, 0.025, desk.color, x0 + segLen / 2, 0.72, rz + 0.61, 2.2);
       [0.2, segLen - 0.2].forEach((dx) => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.74, 1.1), legM);
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.74, 1.05), legM);
         leg.position.set(x0 + dx, 0.37, rz);
         leg.userData.merge = true;
         g.add(leg);
       });
-      const privacy = new THREE.Mesh(new THREE.BoxGeometry(segLen, 0.45, 0.04), mat(kind === 'memes' ? '#243326' : '#2c313b'));
-      privacy.position.set(x0 + segLen / 2, 1.02, rz - 0.6);
-      privacy.userData.merge = true;
-      g.add(privacy);
 
       for (let k = 0; k < perRow; k++) {
         const idx = seats.length;
@@ -153,7 +226,6 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         const parts = new THREE.Group();
         seat.add(parts);
         const base = new THREE.Mesh(geo.lapBase, laptopM);
-        base.position.set(0, 0.81, 0.3);
         const hinge = new THREE.Group();
         hinge.position.set(0, 0.82, 0.17);
         hinge.rotation.x = -0.28;
@@ -164,14 +236,14 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         const anchor = new THREE.Object3D();
         anchor.position.copy(screen.position);
         hinge.add(lid, screen, anchor);
-        // laptops are drawn a little larger than life so they read from the overview camera
-        base.scale.setScalar(1.7);
-        hinge.scale.setScalar(1.7);
-        base.position.z = 0.25;
+        // laptops are drawn larger than life so they read from the overview camera
+        base.scale.setScalar(1.8);
+        hinge.scale.setScalar(1.8);
+        base.position.set(0, 0.81, 0.25);
         parts.add(base, hinge);
         if (n % 2 === 0) {
-          const mug = new THREE.Mesh(geo.mug, mat(kind === 'memes' ? DESKS.memes.color : '#ffffff'));
-          mug.position.set(0.45, 0.84, 0.25);
+          const mug = new THREE.Mesh(geo.mug, neonMat(desk.color, 0.6));
+          mug.position.set(0.55, 0.84, 0.2);
           parts.add(mug);
         }
         const chair = new THREE.Group();
@@ -186,11 +258,11 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         seat.add(chair);
 
         const who = trader(kind, n);
-        const standing = n === 4;
-        const p = person((kind === 'memes' ? 300 : 100) + n * 7, { vest: n % 3 === 1 });
+        const standing = n === 3;
+        const p = person((kind === 'memes' ? 300 : 100) + n * 7, { vest: n % 2 === 1 });
         p.root.rotation.y = Math.PI;
         if (standing) {
-          p.root.position.set(0.3, 0, 1.55);
+          p.root.position.set(0.35, 0, 1.5);
           addPhone(p);
         } else {
           sit(p);
@@ -199,7 +271,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         }
         if (lowPower) p.root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
         seat.add(p.root);
-        parts.traverse((o) => { if (o.isMesh && o !== screen) o.userData.merge = true; });
+        parts.traverse((o) => { if (o.isMesh && o !== screen && o.material.emissive?.getHex() === 0) o.userData.merge = true; });
         chair.traverse((o) => { if (o.isMesh) o.userData.merge = true; });
 
         const hit = new THREE.Mesh(hitGeo, hitMat);
@@ -211,13 +283,11 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     });
   });
 
-  // ------------------------------------------------ two managers pacing the centre aisle
-  const walkers = [0, 1].map((i) => {
-    const p = person(500 + i * 13, { briefcase: i === 0 });
-    p.root.position.set(i ? 1.4 : -1.4, 0, i ? -6 : 6);
-    g.add(p.root);
-    return { p, dir: i ? 1 : -1, speed: 0.9 + i * 0.2, phase: i * 2 };
-  });
+  // one manager pacing the centre aisle
+  const walker = person(512, { briefcase: true });
+  walker.root.position.set(0, 0, 3);
+  g.add(walker.root);
+  const pacer = { dir: -1, phase: 0 };
 
   // merge the static furniture: one draw call per material
   g.updateMatrixWorld(true);
@@ -241,20 +311,29 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   });
 
   // ------------------------------------------------ animation
-  let lastBoard = 0, lastScreen = 0, turn = 0, nextShout = 2;
+  let lastBoard = 0, lastScreen = 0, turn = 0, nextShout = 2.5;
   const screenList = [...screens.values()];
 
-  function update(t, dt, quotes, now) {
-    if (now - lastBoard > 100) {
+  function update(t, dt, quotes, now, music) {
+    if (now - lastBoard > 120) {
       lastBoard = now;
       boards.forEach((b) => { drawBoard(b.ctx, b.c.width, b.c.height, b.desk, quotes, t); b.tex.needsUpdate = true; });
     }
-    if (now - lastScreen > 150) {
+    if (now - lastScreen > 180) {
       lastScreen = now;
       const s = screenList[turn++ % screenList.length];
       drawLaptop(s.ctx, s.c.width, s.c.height, s.symbol, quotes.get(s.symbol), t);
       s.tex.needsUpdate = true;
     }
+
+    // the room grooves when the radio is on
+    const lvl = music?.playing ? music.level() : 0;
+    const bob = music?.playing ? Math.abs(Math.sin(t * Math.PI * (music.track.bpm / 60))) : 0;
+    vinyl.rotation.y -= dt * (music?.playing ? 3.5 : 0);
+    labelDisc.rotation.y = vinyl.rotation.y;
+    speakers.forEach((sp) => sp.scale.setScalar(1 + lvl * 0.15));
+    blobs.forEach((b, i) => b.position.set(Math.sin(t * 0.7 + i * 2) * 0.04, Math.sin(t * 0.4 + i * 1.7) * 0.3, Math.cos(t * 0.6 + i) * 0.04));
+    lampLight.intensity = 5 + Math.sin(t * 0.8) * 0.8;
 
     seats.forEach((s) => {
       const p = s.person, ph = t + s.phase;
@@ -269,23 +348,21 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         p.arms[0].rotation.x = -1.15 + (typing ? Math.sin(ph * 18) * 0.06 : 0);
         p.arms[1].rotation.x = -1.15 + (typing ? Math.cos(ph * 17) * 0.06 : 0.25);
         p.neck.rotation.y = typing ? Math.sin(ph * 0.5) * 0.15 : Math.sin(ph * 0.9) * 0.6;
-        p.neck.rotation.x = typing ? 0.2 : 0;
+        p.neck.rotation.x = (typing ? 0.2 : 0) + bob * 0.12;
         p.hips.rotation.y = Math.sin(ph * 0.25) * 0.12;
       }
     });
 
-    walkers.forEach((w) => {
-      w.phase += dt * w.speed * 5;
-      w.p.root.position.z += w.dir * w.speed * dt;
-      if (w.p.root.position.z > 8) w.dir = -1;
-      if (w.p.root.position.z < -8) w.dir = 1;
-      w.p.root.rotation.y = w.dir > 0 ? 0 : Math.PI;
-      walk(w.p, w.phase, 1);
-    });
+    pacer.phase += dt * 5;
+    walker.root.position.z += pacer.dir * dt * 0.9;
+    if (walker.root.position.z > 4.5) pacer.dir = -1;
+    if (walker.root.position.z < -3.8) pacer.dir = 1;
+    walker.root.rotation.y = pacer.dir > 0 ? 0 : Math.PI;
+    walk(walker, pacer.phase, 1);
 
     nextShout -= dt;
     if (nextShout < 0) {
-      nextShout = 3 + Math.random() * 3;
+      nextShout = 3.5 + Math.random() * 3;
       const s = seats[(Math.random() * seats.length) | 0];
       const q = quotes.get(s.symbol);
       const text = q && Math.random() < 0.5

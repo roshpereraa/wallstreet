@@ -63,6 +63,83 @@ export function signPlate(text, color, sub) {
   return c;
 }
 
+// Synthwave floor: dark tiles with faint neon grid lines
+export function gridFloor(line = '#ff3ea5', bg = '#0c0818') {
+  const c = mk(256, 256), g = c.getContext('2d');
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1800; i++) {
+    g.fillStyle = `rgba(255,255,255,${rand() * 0.03})`;
+    g.fillRect(rand() * 256, rand() * 256, 1, 1);
+  }
+  g.strokeStyle = line;
+  g.globalAlpha = 0.35;
+  g.lineWidth = 3;
+  g.strokeRect(0, 0, 256, 256);
+  return c;
+}
+
+// Rainy neon city for the windows
+export function neonSkyline() {
+  const c = mk(1024, 384), g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 384);
+  grd.addColorStop(0, '#07051a');
+  grd.addColorStop(0.55, '#2a0f45');
+  grd.addColorStop(1, '#ff3ea5');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 1024, 384);
+  let x = 0;
+  while (x < 1024) {
+    const w = 26 + rand() * 60, h = 90 + rand() * 250;
+    g.fillStyle = `rgb(${10 + rand() * 12},${8 + rand() * 10},${26 + rand() * 20})`;
+    g.fillRect(x, 384 - h, w, h);
+    for (let wy = 384 - h + 8; wy < 378; wy += 10) for (let wx = x + 4; wx < x + w - 4; wx += 8) {
+      if (rand() < 0.3) {
+        g.fillStyle = rand() < 0.5 ? `rgba(45,226,255,${0.35 + rand() * 0.5})` : `rgba(255,62,165,${0.35 + rand() * 0.5})`;
+        g.fillRect(wx, wy, 3, 4);
+      }
+    }
+    if (rand() < 0.25) { // rooftop neon
+      g.fillStyle = rand() < 0.5 ? '#2de2ff' : '#ff3ea5';
+      g.fillRect(x + 4, 384 - h - 4, w - 8, 3);
+    }
+    x += w + 3;
+  }
+  g.strokeStyle = 'rgba(180,200,255,.12)'; // rain
+  for (let i = 0; i < 260; i++) {
+    const rx = rand() * 1024, ry = rand() * 384;
+    g.beginPath(); g.moveTo(rx, ry); g.lineTo(rx - 4, ry + 14); g.stroke();
+  }
+  return c;
+}
+
+// Neon tube lettering on a dark backing
+export function neonSign(text, color, { w = 1024, h = 256, font = '"Monoton", "VT323", monospace', size = 0.52, backing = true } = {}) {
+  const c = mk(w, h), g = c.getContext('2d');
+  if (backing) {
+    g.fillStyle = 'rgba(8,5,20,.85)';
+    g.fillRect(0, 0, w, h);
+  }
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `${h * size}px ${font}`;
+  for (const [blur, alpha] of [[40, 0.6], [18, 0.9], [4, 1]]) {
+    g.shadowColor = color;
+    g.shadowBlur = blur;
+    g.globalAlpha = alpha;
+    g.fillStyle = color;
+    g.fillText(text, w / 2, h / 2 + h * 0.03);
+  }
+  g.globalAlpha = 1;
+  g.shadowBlur = 0;
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  g.font = `${h * size * 0.98}px ${font}`;
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = 0.35;
+  g.fillText(text, w / 2, h / 2 + h * 0.03);
+  return c;
+}
+
 // ---------------------------------------------------------------- live screens
 export function spark(g, data, x, y, w, h, color, fill = true) {
   if (!data || data.length < 2) return;
@@ -90,10 +167,10 @@ export function spark(g, data, x, y, w, h, color, fill = true) {
 }
 
 export function drawLaptop(g, w, h, symbol, q, t) {
-  g.fillStyle = '#05080d';
+  g.fillStyle = '#0a0616';
   g.fillRect(0, 0, w, h);
   const col = q?.change >= 0 ? UP : q ? DOWN : '#6b7a90';
-  g.fillStyle = '#0d1624';
+  g.fillStyle = '#1a0f33';
   g.fillRect(0, 0, w, h * 0.17);
   g.font = `600 ${h * 0.11}px "IBM Plex Mono", monospace`;
   g.textBaseline = 'middle';
@@ -146,11 +223,11 @@ export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#040506', siz
 }
 
 export function drawBoard(g, w, h, firm, quotes, t) {
-  g.fillStyle = '#030406';
+  g.fillStyle = '#07041a';
   g.fillRect(0, 0, w, h);
   const head = h * 0.13;
   g.fillStyle = firm.color;
-  g.font = `600 ${head * 0.62}px "Cormorant Garamond", Georgia, serif`;
+  g.font = `${head * 0.7}px "VT323", "IBM Plex Mono", monospace`;
   g.textBaseline = 'middle';
   g.fillText(firm.name.toUpperCase(), w * 0.02, head * 0.55);
   g.textAlign = 'right';
@@ -166,7 +243,7 @@ export function drawBoard(g, w, h, firm, quotes, t) {
     const q = quotes.get(s);
     const x = (i % cols) * cw, y = top + Math.floor(i / cols) * ch;
     const col = q ? (q.change >= 0 ? UP : DOWN) : '#555';
-    g.fillStyle = '#0a0e14';
+    g.fillStyle = '#120a28';
     g.fillRect(x + 6, y + 6, cw - 12, ch - 12);
     g.fillStyle = '#ffb000';
     g.font = `600 ${ch * 0.15}px "IBM Plex Mono", monospace`;
@@ -183,6 +260,6 @@ export function drawBoard(g, w, h, firm, quotes, t) {
   });
   g.save();
   g.translate(0, h - tapeH);
-  drawTape(g, w, tapeH, firm.tape, quotes, t * 90, { bg: '#111' });
+  drawTape(g, w, tapeH, firm.tape, quotes, t * 90, { bg: '#160c30' });
   g.restore();
 }
