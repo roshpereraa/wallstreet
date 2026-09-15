@@ -42,6 +42,27 @@ export function skylineCanvas() {
   return c;
 }
 
+export function signPlate(text, color, sub) {
+  const c = mk(1200, 200), g = c.getContext('2d');
+  g.fillStyle = '#0a0b0e';
+  g.fillRect(0, 0, 1200, 200);
+  g.strokeStyle = color;
+  g.lineWidth = 6;
+  g.strokeRect(8, 8, 1184, 184);
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = color;
+  g.shadowColor = color;
+  g.shadowBlur = 24;
+  g.font = '700 96px "Cormorant Garamond", Georgia, serif';
+  g.fillText(text.toUpperCase(), 600, 88);
+  g.shadowBlur = 0;
+  g.globalAlpha = 0.75;
+  g.font = '500 26px "IBM Plex Mono", monospace';
+  g.fillText(sub, 600, 160);
+  return c;
+}
+
 // ---------------------------------------------------------------- live screens
 export function spark(g, data, x, y, w, h, color, fill = true) {
   if (!data || data.length < 2) return;
@@ -124,7 +145,7 @@ export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#040506', siz
   }
 }
 
-export function drawBoard(g, w, h, firm, quotes, t, tapeSymbols) {
+export function drawBoard(g, w, h, firm, quotes, t) {
   g.fillStyle = '#030406';
   g.fillRect(0, 0, w, h);
   const head = h * 0.13;
@@ -162,6 +183,6 @@ export function drawBoard(g, w, h, firm, quotes, t, tapeSymbols) {
   });
   g.save();
   g.translate(0, h - tapeH);
-  drawTape(g, w, tapeH, tapeSymbols, quotes, t * 90, { bg: '#111' });
+  drawTape(g, w, tapeH, firm.tape, quotes, t * 90, { bg: '#111' });
   g.restore();
 }

@@ -1,16 +1,19 @@
 // The laptop terminal: live watchlist, chart, stats and headlines for any ticker.
-import { FIRMS, INDICES, label } from './data.js';
-import { quotes, watch, onQuotes, refresh, getChart, search, fmtPrice, fmtPct, fmtChg, fmtVol, tone, UP, DOWN } from './market.js';
+import { DESKS, label, isMeme } from './data.js';
+import { quotes, watch, onQuotes, refresh, getChart, search, searchMemes, fmtPrice, fmtPct, fmtChg, fmtVol, tone, UP, DOWN } from './market.js';
 
-const RANGES = [['1d', '1D'], ['5d', '5D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y'], ['5y', '5Y']];
+const RANGES = {
+  stocks: [['1d', '1D'], ['5d', '5D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y'], ['5y', '5Y']],
+  memes: [['1d', '24H'], ['5d', '7D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y']],
+};
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATE_TEXT = { OPEN: 'Market open', PRE: 'Pre-market', AFTER: 'After hours', CLOSED: 'Market closed' };
 
-function loadList() {
-  try { return JSON.parse(localStorage.getItem('ws.mylist')) || []; } catch { return []; }
+function loadList(kind) {
+  try { return JSON.parse(localStorage.getItem(`ws.mylist.${kind}`)) || []; } catch { return []; }
 }
-function saveList(l) {
-  try { localStorage.setItem('ws.mylist', JSON.stringify(l)); } catch { /* private mode */ }
+function saveList(kind, l) {
+  try { localStorage.setItem(`ws.mylist.${kind}`, JSON.stringify(l)); } catch { /* private mode */ }
 }
 
 export function createTerminal(root, { onClose }) {
@@ -51,11 +54,11 @@ export function createTerminal(root, { onClose }) {
             <h4>Key stats</h4>
             <dl class="lt-stats"></dl>
             <div class="lt-dayrange"><span></span><div><i></i></div><span></span></div>
-            <h4>Headlines</h4>
+            <h4 class="lt-news-title">Headlines</h4>
             <ul class="lt-news"><li class="lt-empty">Loading…</li></ul>
           </aside>
         </div>
-        <footer class="lt-foot"><span>Live data: Yahoo Finance via /api · quotes can be delayed · not investment advice</span><span class="lt-upd"></span></footer>
+        <footer class="lt-foot"><span class="lt-src"></span><span class="lt-upd"></span></footer>
       </div>
     </div>`;
 
@@ -65,17 +68,15 @@ export function createTerminal(root, { onClose }) {
     tape: $('.lt-tape'), lists: $('.lt-lists'), input: $('.lt-search input'), results: $('.lt-results'),
     sym: $('.lt-sym b'), star: $('.lt-star'), name: $('.lt-name'), px: $('.lt-px b'), chg: $('.lt-px span'),
     ranges: $('.lt-ranges'), kinds: $('.lt-kinds'), canvas: $('.lt-chart canvas'), tip: $('.lt-tip'), msg: $('.lt-msg'),
-    stats: $('.lt-stats'), dayrange: $('.lt-dayrange'), news: $('.lt-news'), upd: $('.lt-upd'),
+    stats: $('.lt-stats'), dayrange: $('.lt-dayrange'), news: $('.lt-news'), upd: $('.lt-upd'), src: $('.lt-src'), newsTitle: $('.lt-news-title'),
   };
 
-  let firm = FIRMS[0], symbol = 'AAPL', range = '1d', kind = 'line', chart = null, hover = null;
-  let open = false, chartTimer = null, clockTimer = null, reqId = 0, myList = loadList();
-
-  el.ranges.innerHTML = RANGES.map(([r, t]) => `<button data-r="${r}">${t}</button>`).join('');
+  let firm = DESKS.stocks, symbol = 'AAPL', range = '1d', kind = 'line', chart = null, hover = null;
+  let open = false, chartTimer = null, clockTimer = null, reqId = 0, myList = loadList('stocks');
 
   // ------------------------------------------------ rendering
   function renderTape() {
-    el.tape.innerHTML = INDICES.map((s) => {
+    el.tape.innerHTML = firm.tape.map((s) => {
       const q = quotes.get(s);
       return `<button data-s="${esc(s)}"><b>${esc(label(s))}</b> ${q ? fmtPrice(q.price, s) : '···'} <em style="color:${tone(q?.change)}">${q ? fmtPct(q.changePct) : ''}</em></button>`;
     }).join('');
@@ -90,7 +91,7 @@ export function createTerminal(root, { onClose }) {
       path = pts.map((v, i) => `${i ? 'L' : 'M'}${((i / (pts.length - 1)) * 60).toFixed(1)},${(18 - ((v - lo) / sp) * 16).toFixed(1)}`).join('');
     }
     return `<button class="lt-row${s === symbol ? ' on' : ''}" data-s="${esc(s)}">
-      <span class="lt-rs"><b>${esc(label(s))}</b><small>${esc(q?.name || s)}</small></span>
+      <span class="lt-rs"><b>${esc(label(s))}</b><small>${esc(q?.name || (isMeme(s) ? 'Meme coin' : s))}</small></span>
       <svg viewBox="0 0 60 20" preserveAspectRatio="none"><path d="${path}" stroke="${tone(q?.change)}" fill="none" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>
       <span class="lt-rp"><b>${q ? fmtPrice(q.price, s) : '···'}</b><small style="color:${tone(q?.change)}">${q ? fmtPct(q.changePct) : ''}</small></span>
     </button>`;
@@ -106,18 +107,29 @@ export function createTerminal(root, { onClose }) {
     const q = quotes.get(symbol);
     const c = chart && chart.symbol === symbol ? chart : null;
     const src = q || c;
-    el.sym.textContent = label(symbol) === symbol ? symbol : `${label(symbol)} · ${symbol}`;
-    el.name.textContent = src ? `${src.name} · ${src.exchange || ''} · ${src.currency || ''}` : 'Loading…';
+    const meme = isMeme(symbol);
+    el.sym.textContent = meme || label(symbol) === symbol ? label(symbol) : `${label(symbol)} · ${symbol}`;
+    el.name.textContent = !src ? 'Loading…' : meme ? `${src.name} · Meme coin${src.rank ? ` · Rank #${src.rank}` : ''} · USD` : `${src.name} · ${src.exchange || ''} · ${src.currency || ''}`;
     el.px.textContent = src ? fmtPrice(src.price, symbol) : '—';
     el.chg.textContent = src ? `${fmtChg(src.change, symbol)}  (${fmtPct(src.changePct)})` : '';
     el.chg.style.color = tone(src?.change);
     el.star.textContent = myList.includes(symbol) ? '★' : '☆';
     const ms = src?.marketState || 'CLOSED';
-    el.state.textContent = STATE_TEXT[ms];
+    el.state.textContent = meme ? 'Trading 24/7' : STATE_TEXT[ms];
     el.state.dataset.s = ms;
 
     const stat = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
-    el.stats.innerHTML = src ? [
+    el.stats.innerHTML = !src ? '' : meme ? [
+      stat('24h high', fmtPrice(src.dayHigh, symbol)),
+      stat('24h low', fmtPrice(src.dayLow, symbol)),
+      stat('24h volume', src.volume ? '$' + fmtVol(src.volume) : '—'),
+      stat('Market cap', src.marketCap ? '$' + fmtVol(src.marketCap) : '—'),
+      stat('1h change', `<span style="color:${tone(src.change1h)}">${fmtPct(src.change1h)}</span>`),
+      stat('7d change', `<span style="color:${tone(src.change7d)}">${fmtPct(src.change7d)}</span>`),
+      stat('All-time high', fmtPrice(src.ath, symbol)),
+      stat('From ATH', fmtPct(src.athChangePct)),
+      stat('Supply', fmtVol(src.supply)),
+    ].join('') : [
       stat('Open', fmtPrice(c?.open ?? q?.open, symbol)),
       stat('Prev close', fmtPrice(src.prevClose, symbol)),
       stat('Day high', fmtPrice(src.dayHigh, symbol)),
@@ -126,7 +138,7 @@ export function createTerminal(root, { onClose }) {
       stat('52W high', fmtPrice(src.high52, symbol)),
       stat('52W low', fmtPrice(src.low52, symbol)),
       stat('Type', esc((src.type || '').toLowerCase())),
-    ].join('') : '';
+    ].join('');
     const [lo, bar, hi] = el.dayrange.children;
     if (src?.dayLow != null && src?.dayHigh != null) {
       el.dayrange.hidden = false;
@@ -139,6 +151,10 @@ export function createTerminal(root, { onClose }) {
   }
 
   function renderRanges() {
+    if (el.ranges.dataset.kind !== firm.kind) {
+      el.ranges.dataset.kind = firm.kind;
+      el.ranges.innerHTML = RANGES[firm.kind].map(([r, t]) => `<button data-r="${r}">${t}</button>`).join('');
+    }
     el.ranges.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.r === range));
     el.kinds.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.k === kind));
   }
@@ -185,7 +201,7 @@ export function createTerminal(root, { onClose }) {
       g.fillText(fmtPrice(v, symbol), cw + 8, y);
     }
     // x labels
-    const tz = chart.timezone || 'America/New_York';
+    const tz = isMeme(symbol) ? undefined : chart.timezone || 'America/New_York';
     const fmtT = (ts) => new Date(ts * 1000).toLocaleString('en-US', range === '1d' ? { timeZone: tz, hour: 'numeric', minute: '2-digit' } : range === '5d' || range === '1mo' ? { timeZone: tz, month: 'short', day: 'numeric' } : { timeZone: tz, month: 'short', year: '2-digit' });
     g.textAlign = 'center';
     const ticks = Math.max(2, Math.floor(cw / 110));
@@ -281,12 +297,29 @@ export function createTerminal(root, { onClose }) {
     const s = symbol;
     el.news.innerHTML = '<li class="lt-empty">Loading…</li>';
     const q = quotes.get(s) || chart;
-    const term = s.startsWith('^') || s.includes('=') ? (q?.name || label(s)) : s;
+    const term = isMeme(s) || s.startsWith('^') || s.includes('=') ? (q?.name || label(s)) : s;
+    if (isMeme(s)) return loadTrending();
+    el.newsTitle.textContent = 'Headlines';
     const { news = [] } = await search(term).catch(() => ({}));
     if (s !== symbol) return;
     el.news.innerHTML = news.length ? news.slice(0, 7).map((n) => `
       <li><a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>
       <small>${esc(n.publisher)} · ${ago(n.time)}</small></li>`).join('') : '<li class="lt-empty">No recent headlines.</li>';
+  }
+
+  // meme desk: no reliable headline feed, so show what's trending on CoinGecko instead
+  let trending = null, trendingAt = 0;
+  async function loadTrending() {
+    el.newsTitle.textContent = 'Trending on CoinGecko';
+    if (!trending || Date.now() - trendingAt > 300000) {
+      const r = await fetch('/api/meme-trending').then((x) => x.json()).catch(() => ({ coins: [] }));
+      trending = r.coins || [];
+      trendingAt = Date.now();
+    }
+    if (firm.kind !== 'memes') return;
+    el.news.innerHTML = trending.length ? trending.map((c) => `
+      <li><button class="lt-trend" data-s="${esc(c.symbol)}"><b>${esc(c.ticker)}</b><span>${esc(c.name)}${c.rank ? ` · #${c.rank}` : ''}</span>
+      <em style="color:${tone(c.changePct)}">${fmtPrice(c.price)} ${fmtPct(c.changePct)}</em></button></li>`).join('') : '<li class="lt-empty">Trending list unavailable.</li>';
   }
 
   function ago(ts) {
@@ -319,7 +352,7 @@ export function createTerminal(root, { onClose }) {
     if (b.dataset.k) { kind = b.dataset.k; renderRanges(); return drawChart(); }
     if (b === el.star) {
       myList = myList.includes(symbol) ? myList.filter((x) => x !== symbol) : [...myList, symbol].slice(-20);
-      saveList(myList);
+      saveList(firm.kind, myList);
       renderLists();
       renderHeader();
     }
@@ -331,18 +364,20 @@ export function createTerminal(root, { onClose }) {
     const q = el.input.value.trim();
     if (!q) { el.results.hidden = true; return; }
     searchTimer = setTimeout(async () => {
-      const { quotes: qs = [] } = await search(q).catch(() => ({}));
+      const meme = firm.kind === 'memes';
+      const { quotes: qs = [] } = await (meme ? searchMemes(q) : search(q)).catch(() => ({}));
       if (el.input.value.trim() !== q) return;
-      const direct = /^[A-Za-z.^=\-]{1,10}$/.test(q) && !qs.some((x) => x.symbol === q.toUpperCase()) ? [{ symbol: q.toUpperCase(), name: 'Open ticker', exchange: '', type: '' }] : [];
+      const direct = !meme && /^[A-Za-z.^=\-]{1,10}$/.test(q) && !qs.some((x) => x.symbol === q.toUpperCase()) ? [{ symbol: q.toUpperCase(), name: 'Open ticker', exchange: '', type: '' }] : [];
       const all = [...qs, ...direct];
-      el.results.innerHTML = all.length ? all.map((x) => `<button data-s="${esc(x.symbol)}"><b>${esc(x.symbol)}</b><span>${esc(x.name)}</span><small>${esc([x.exchange, x.type].filter(Boolean).join(' · '))}</small></button>`).join('') : '<p>No matches</p>';
+      el.results.innerHTML = all.length ? all.map((x) => `<button data-s="${esc(x.symbol)}"><b>${esc(x.symbol.startsWith('cg:') ? x.exchange.toUpperCase() : x.symbol)}</b><span>${esc(x.name)}</span><small>${esc([x.exchange, x.type].filter(Boolean).join(' · '))}</small></button>`).join('') : '<p>No matches</p>';
       el.results.hidden = false;
     }, 220);
   });
   el.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const first = el.results.querySelector('button');
-      select(first ? first.dataset.s : el.input.value.trim().toUpperCase());
+      if (first) select(first.dataset.s);
+      else if (firm.kind === 'stocks' && el.input.value.trim()) select(el.input.value.trim().toUpperCase());
       el.input.value = '';
       el.results.hidden = true;
       el.input.blur();
@@ -371,14 +406,17 @@ export function createTerminal(root, { onClose }) {
 
   return {
     get isOpen() { return open; },
-    open({ firm: f, symbol: s, who }) {
-      firm = f || FIRMS[0];
+    open({ desk, symbol: s, who }) {
+      firm = desk || DESKS.stocks;
+      myList = loadList(firm.kind);
+      el.input.placeholder = firm.kind === 'memes' ? 'Search any meme coin…  ( / )' : 'Search any ticker…  ( / )';
+      el.src.textContent = firm.kind === 'memes' ? 'Live data: CoinGecko via /api · crypto is volatile · not investment advice' : 'Live data: Yahoo Finance via /api · quotes can be delayed · not investment advice';
       open = true;
       root.style.setProperty('--firm', firm.color);
       el.firmName.textContent = firm.name;
       el.desk.textContent = firm.desk;
       el.user.innerHTML = who ? `<b>${esc(who.name)}</b> · ${esc(who.role)}` : '<b>Guest</b> · Visitor';
-      watch([...INDICES, ...firm.symbols, ...myList]);
+      watch([...firm.tape, ...firm.symbols, ...myList]);
       range = '1d';
       renderRanges();
       renderTape();

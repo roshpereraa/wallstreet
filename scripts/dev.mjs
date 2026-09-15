@@ -12,7 +12,7 @@ createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
   try {
     if (url.pathname.startsWith('/api/')) {
-      const name = url.pathname.slice(5).replace(/[^a-z]/g, '');
+      const name = url.pathname.slice(5).replace(/[^a-z-]/g, '');
       const mod = await import(join(root, 'api', `${name}.js`));
       const r = await mod.GET(new Request(url));
       res.writeHead(r.status, Object.fromEntries(r.headers));
