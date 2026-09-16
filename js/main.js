@@ -4,6 +4,7 @@ import { createTerminal } from './terminal.js';
 import { DESKS, INDICES, label } from './data.js';
 import { quotes, watch, onQuotes, refresh, startPolling, fmtPrice, fmtPct, tone } from './market.js';
 import { radio } from './music.js';
+import { renderWalletButtons } from './walletui.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';

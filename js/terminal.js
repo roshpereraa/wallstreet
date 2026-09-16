@@ -39,6 +39,7 @@ export function createTerminal(root, { onClose }) {
           </nav>
           <div class="lt-equity" title="Paper account equity"></div>
           <button class="lt-radio" title="Lo-fi radio">♫ <span>Radio off</span></button>
+          <button class="lt-connect wallet-btn" data-wallet-button><i>⬡</i><span>Connect wallet</span></button>
           <div class="lt-clock"><span class="lt-state"></span><b class="lt-ny"></b></div>
           <button class="lt-close" aria-label="Close laptop (Esc)">✕</button>
         </header>
@@ -465,6 +466,7 @@ export function createTerminal(root, { onClose }) {
     if (t === 'cli') cli.focus();
     if (t === 'axiom') ensureAxiom().open(axView || 'pulse', axArg);
     root.classList.toggle('ax-mode', t === 'axiom');
+    import('./walletui.js').then((m) => m.renderWalletButtons());
     if (t === 'markets') requestAnimationFrame(redraw);
   }
 

@@ -31,6 +31,7 @@ export function createAxiom(root) {
         <div class="ax-chain"><button data-chain="solana" class="on">SOL</button><button data-chain="robinhood">HOOD</button></div>
         <span class="ax-fake" title="Everything here uses fake money">FAKE MONEY</span>
         <div class="ax-wallet"></div>
+        <button class="ax-connect wallet-btn" data-wallet-button><i>⬡</i><span>Connect wallet</span></button>
       </nav>
       <section class="ax-view" data-view="pulse"></section>
       <section class="ax-view ax-view-token" data-view="token" hidden></section>
