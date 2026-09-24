@@ -705,3 +705,21 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .wl-mobile div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .wl-mobile a { padding: 5px 12px; border-radius: 8px; background: #2c1d0e; border: 1px solid rgba(236,172,64,.4); color: #fff; text-decoration: none; font-size: 13px; }
 @media (max-width: 700px) { .wl-cols { grid-template-columns: 1fr; } .wl-install > div { grid-template-columns: 1fr 1fr; } .lt-connect span { display: none; } }
+
+/* ------------------------------------------------ the X mark, on every screen */
+.x-link { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none;
+  width: 30px; height: 30px; border-radius: 9px; color: var(--ink); text-decoration: none;
+  border: 1px solid rgba(255,194,71,.38); background: rgba(255,194,71,.07);
+  transition: background .15s, border-color .15s, box-shadow .15s, color .15s; }
+.x-link svg { width: 15px; height: 15px; fill: currentColor; }
+.x-link:hover { color: #1a1206; background: var(--pink); border-color: var(--pink);
+  box-shadow: 0 0 16px rgba(255,194,71,.55); }
+.x-link span { display: none; }
+/* dock */
+#dock .x-link { width: 32px; height: 30px; border-radius: 10px; }
+/* laptop header + Axiom nav */
+.lt-x { width: 28px; height: 28px; border-radius: 8px; }
+/* boot screen: the mark with the handle beside it */
+.boot-x { margin: 14px 0 0; }
+.x-boot { width: auto; height: 32px; padding: 0 13px; border-radius: 999px; font: 500 12.5px var(--mono); letter-spacing: .04em; }
+.x-boot span { display: inline; }

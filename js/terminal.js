@@ -1,5 +1,6 @@
 // The laptop: Markets (watchlists, charts, CA search, order ticket), Portfolio (paper account) and a command-line Terminal.
 import { DESKS, SOURCES, label, isMeme, isDex, isCrypto, dexParts, axiomUrl, dexscreenerUrl } from './data.js';
+import { xLink } from './brand.js';
 import {
   quotes, watch, onQuotes, refresh, getChart, search, searchMemes, dexList, dexLookup, quoteNow,
   fmtPrice, fmtPct, fmtChg, fmtVol, fmtUsd, fmtQty, tone,
@@ -41,6 +42,7 @@ export function createTerminal(root, { onClose }) {
           <button class="lt-radio" title="Lo-fi radio">♫ <span>Radio off</span></button>
           <button class="lt-connect wallet-btn" data-wallet-button><i>⬡</i><span>Connect wallet</span></button>
           <div class="lt-clock"><span class="lt-state"></span><b class="lt-ny"></b></div>
+          ${xLink('lt-x')}
           <button class="lt-close" aria-label="Close laptop (Esc)">✕</button>
         </header>
         <div class="lt-tape" aria-label="Live prices"></div>
