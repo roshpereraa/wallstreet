@@ -5,6 +5,7 @@ import { DESKS, INDICES, label } from './data.js';
 import { quotes, watch, onQuotes, refresh, startPolling, fmtPrice, fmtPct, tone } from './market.js';
 import { radio } from './music.js';
 import { renderWalletButtons } from './walletui.js';
+import { CA } from './brand.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -156,6 +157,40 @@ function shout(seat, text) {
 }
 
 // ---------------------------------------------------------------- HUD
+// Every CA pill on the page — dock, boot card, laptop header — copies the address.
+// navigator.clipboard needs a secure context and can still be refused, so fall back
+// to a hidden textarea, and failing that leave the address selected to copy by hand.
+async function copyCA() {
+  try {
+    await navigator.clipboard.writeText(CA);
+    return true;
+  } catch { /* fall through */ }
+  const ta = Object.assign(document.createElement('textarea'), { value: CA });
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  if (ok) ta.remove();
+  else setTimeout(() => ta.remove(), 60000);
+  return ok;
+}
+
+document.addEventListener('click', async (e) => {
+  const pill = e.target.closest('[data-ca]');
+  if (!pill) return;
+  const note = pill.querySelector('em');
+  const ok = await copyCA();
+  pill.classList.toggle('copied', ok);
+  pill.classList.toggle('failed', !ok);
+  if (note) note.textContent = ok ? 'copied ✓' : 'select & copy';
+  clearTimeout(pill._t);
+  pill._t = setTimeout(() => {
+    pill.classList.remove('copied', 'failed');
+    if (note) note.textContent = 'copy';
+  }, 1800);
+});
+
 function toggleHelp(force) { helpEl.hidden = force === undefined ? !helpEl.hidden : !force; }
 helpEl.addEventListener('click', (e) => { if (e.target === helpEl || e.target.closest('[data-close]')) toggleHelp(false); });
 $('#dock').addEventListener('click', (e) => {
