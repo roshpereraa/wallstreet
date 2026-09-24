@@ -50,7 +50,7 @@ scene.add(room.group);
 const composer = lowPower ? null : new EffectComposer(renderer);
 if (composer) {
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.5, 0.86));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.42, 0.5, 0.9));
   composer.addPass(new OutputPass());
 }
 

@@ -8,7 +8,9 @@ import { gridFloor, neonSkyline, neonSign, drawBoard, drawLaptop } from './textu
 // the meme coin desk on the left, the stock exchange desk on the right.
 export const RW = 10, RD = 6.5, RH = 4.4;
 
-const PINK = DESKS.memes.color, CYAN = DESKS.stocks.color, PURPLE = '#8b5cff';
+// every LED tube, neon sign and light strip in the room is white
+const LED = '#ffffff';
+const PINK = LED, CYAN = LED, PURPLE = LED;
 const neonMat = (color, intensity = 3) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false });
 
 export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
@@ -22,7 +24,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   };
 
   // ------------------------------------------------ lights: dim room, coloured pools
-  g.add(new THREE.HemisphereLight('#6b5cff', '#1a0b24', 1.1));
+  g.add(new THREE.HemisphereLight('#8f9ad8', '#1a0b24', 0.9));
   const key = new THREE.DirectionalLight('#c9b8ff', 0.9);
   key.position.set(4, 12, 10);
   key.castShadow = !lowPower;
@@ -32,7 +34,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   key.shadow.normalBias = 0.04;
   g.add(key, key.target);
   [[-1, PINK], [1, CYAN]].forEach(([s, c]) => {
-    const l = new THREE.PointLight(c, 26, 14, 1.5);
+    const l = new THREE.PointLight(c, 13, 13, 1.6);
     l.position.set(s * 5, 3.2, -3);
     g.add(l);
   });
@@ -93,11 +95,11 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     board.position.set(s * 5, 2.35, -RD + 0.06);
     g.add(board);
     tag(board, 'board', kind);
-    tube(7.6, 0.04, 0.04, desk.color, s * 5, 3.68, -RD + 0.06, 3);
-    tube(7.6, 0.04, 0.04, desk.color, s * 5, 1.02, -RD + 0.06, 3);
+    tube(7.6, 0.04, 0.04, LED, s * 5, 3.68, -RD + 0.06, 3);
+    tube(7.6, 0.04, 0.04, LED, s * 5, 1.02, -RD + 0.06, 3);
     boards.push({ desk, c, ctx: c.getContext('2d'), tex });
 
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: canvasTex(neonSign(kind === 'memes' ? 'MEME COINS' : 'STOCKS', desk.color, { backing: false })), transparent: true, toneMapped: false, depthWrite: false }));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: canvasTex(neonSign(kind === 'memes' ? 'MEME COINS' : 'STOCKS', LED, { backing: false })), transparent: true, toneMapped: false, depthWrite: false }));
     sign.position.set(s * 5, RH + 0.7, -RD + 0.1);
     g.add(sign);
     tag(sign, 'board', kind);
@@ -206,7 +208,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
       top.castShadow = top.receiveShadow = true;
       g.add(top);
       // neon underglow strip on the desk edge
-      tube(segLen, 0.025, 0.025, desk.color, x0 + segLen / 2, 0.72, rz + 0.61, 2.2);
+      tube(segLen, 0.025, 0.025, LED, x0 + segLen / 2, 0.72, rz + 0.61, 2.2);
       [0.2, segLen - 0.2].forEach((dx) => {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.74, 1.05), legM);
         leg.position.set(x0 + dx, 0.37, rz);
@@ -242,7 +244,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
         base.position.set(0, 0.81, 0.25);
         parts.add(base, hinge);
         if (n % 2 === 0) {
-          const mug = new THREE.Mesh(geo.mug, neonMat(desk.color, 0.6));
+          const mug = new THREE.Mesh(geo.mug, neonMat(LED, 0.6));
           mug.position.set(0.55, 0.84, 0.2);
           parts.add(mug);
         }
