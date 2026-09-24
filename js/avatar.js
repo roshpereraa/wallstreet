@@ -20,11 +20,12 @@ export const mat = (color, o = {}) => {
   return matCache.get(key);
 };
 
-export const SUITS = ['#1d2330', '#2b2f38', '#3a3f4b', '#1f2a44', '#453a33', '#2d3a34', '#50463f', '#15171c'];
-export const SHIRTS = ['#f4f6fa', '#cfe0f5', '#f2e6e0', '#dfe8dc', '#ffffff'];
-export const SKIN = ['#f1c9a5', '#e0ac85', '#c68d63', '#9c6b48', '#6e4a31', '#f7d9bf'];
-export const HAIR = ['#1a1410', '#3a2418', '#6b4a2a', '#c9a060', '#2b2b2b', '#8a8a8a', '#5a2a1a'];
-export const TIES = ['#b3262e', '#1f5fbf', '#d9a21b', '#2e8b57', '#6a2fa0', '#111111'];
+// dark suits, so the traders read as silhouettes against the windows
+export const SUITS = ['#14161c', '#0e1014', '#1b1a20', '#101319', '#1e1a17', '#161a19', '#221d18', '#0a0b0e'];
+export const SHIRTS = ['#8e8578', '#7d7a72', '#978b78', '#85807a', '#a1957f'];
+export const SKIN = ['#a8815f', '#96694a', '#7e5637', '#63412a', '#42291a', '#b08a67'];
+export const HAIR = ['#120e0a', '#241611', '#3d2a18', '#8a6a35', '#1b1b1b', '#5d564c', '#38180f'];
+export const TIES = ['#7d1f22', '#26364f', '#b6862a', '#2d5a41', '#4a3357', '#0c0c0c'];
 
 const pick = (arr, n) => arr[Math.abs(n) % arr.length];
 
@@ -35,7 +36,7 @@ export function person(n = 0, { briefcase = false, vest = false } = {}) {
   const skin = mat(pick(SKIN, n * 5 + 2), { roughness: 0.6 });
   const hair = mat(pick(HAIR, n * 7 + 3), { roughness: 0.9 });
   const pants = mat(pick(SUITS, n * 3 + 1));
-  const shoes = mat('#0d0d0f', { roughness: 0.4 });
+  const shoes = mat('#08080a', { roughness: 0.4 });
 
   const hips = new THREE.Group();
   hips.position.y = 0.92;

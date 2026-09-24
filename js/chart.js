@@ -36,9 +36,9 @@ export function drawChart(cv, tip, { chart, symbol, range, kind, hover }) {
   g.textBaseline = 'middle';
   for (let i = 0; i <= 5; i++) {
     const v = lo + ((hi - lo) * i) / 5, y = Y(v);
-    g.strokeStyle = 'rgba(160,140,255,.08)';
+    g.strokeStyle = 'rgba(214,170,90,.1)';
     g.beginPath(); g.moveTo(0, y); g.lineTo(cw, y); g.stroke();
-    g.fillStyle = '#7d74a8';
+    g.fillStyle = '#a8916a';
     g.fillText(fmtPrice(v, symbol), cw + 8, y);
   }
   const tz = isCrypto(symbol) ? undefined : chart.timezone || 'America/New_York';
@@ -47,7 +47,7 @@ export function drawChart(cv, tip, { chart, symbol, range, kind, hover }) {
   const ticks = Math.max(2, Math.floor(cw / 110));
   for (let i = 0; i <= ticks; i++) {
     const idx = Math.round((i / ticks) * (pts.length - 1));
-    g.fillStyle = '#7d74a8';
+    g.fillStyle = '#a8916a';
     g.fillText(fmtT(pts[idx][0]), Math.min(cw - 30, Math.max(30, X(idx))), H - padB / 2);
   }
   g.textAlign = 'left';
@@ -98,7 +98,7 @@ export function drawChart(cv, tip, { chart, symbol, range, kind, hover }) {
   const last = chart.price ?? pts.at(-1)[4];
   g.fillStyle = col;
   g.fillRect(cw + 2, Y(last) - 9, padR - 4, 18);
-  g.fillStyle = '#0b0718';
+  g.fillStyle = '#140d05';
   g.fillText(fmtPrice(last, symbol), cw + 8, Y(last));
 
   if (hover != null && hover.x < cw) {

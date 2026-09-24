@@ -6,12 +6,12 @@ export const INDICES = ['^GSPC', '^DJI', '^IXIC', '^RUT', '^VIX', '^TNX', 'CL=F'
 
 export const DESKS = {
   memes: {
-    id: 'memes', kind: 'memes', name: 'Meme Coins', desk: 'Meme Coin Desk', color: '#ff3ea5', accent: '#ffb3dc',
+    id: 'memes', kind: 'memes', name: 'Meme Coins', desk: 'Meme Coin Desk', color: '#ff9f36', accent: '#ffd9a8',
     symbols: ['cg:dogecoin', 'cg:shiba-inu', 'cg:pepe', 'cg:official-trump', 'cg:bonk', 'cg:dogwifcoin', 'cg:floki', 'cg:fartcoin'],
     tape: ['BTC-USD', 'ETH-USD', 'SOL-USD', 'cg:dogecoin', 'cg:shiba-inu', 'cg:pepe', 'cg:bonk', 'cg:dogwifcoin', 'cg:spx6900', 'cg:pudgy-penguins'],
   },
   stocks: {
-    id: 'stocks', kind: 'stocks', name: 'Stock Exchange', desk: 'Stock Exchange Desk', color: '#2de2ff', accent: '#b8f6ff',
+    id: 'stocks', kind: 'stocks', name: 'Stock Exchange', desk: 'Stock Exchange Desk', color: '#ffd27a', accent: '#fff0cd',
     symbols: ['^GSPC', '^DJI', '^IXIC', 'AAPL', 'NVDA', 'MSFT', 'TSLA', 'JPM'],
     tape: INDICES,
   },

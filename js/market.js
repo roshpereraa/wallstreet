@@ -151,4 +151,4 @@ export function fmtVol(v) {
 }
 export const UP = '#3dffa8';
 export const DOWN = '#ff4f7b';
-export const tone = (v) => (v == null ? '#9aa4b2' : v >= 0 ? UP : DOWN);
+export const tone = (v) => (v == null ? '#a8916a' : v >= 0 ? UP : DOWN);

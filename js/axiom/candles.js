@@ -53,9 +53,9 @@ export function createCandleChart(host) {
     g.textBaseline = 'middle';
     for (let i = 0; i <= 6; i++) {
       const v = lo + ((hi - lo) * i) / 6, y = Y(v);
-      g.strokeStyle = 'rgba(120,130,170,.09)';
+      g.strokeStyle = 'rgba(214,170,90,.09)';
       g.beginPath(); g.moveTo(0, y); g.lineTo(cw, y); g.stroke();
-      g.fillStyle = '#6c7393';
+      g.fillStyle = '#93805c';
       g.fillText(fmt(v * scale), cw + 8, y);
     }
     // time axis
@@ -68,9 +68,9 @@ export function createCandleChart(host) {
       const txt = tf >= 86400 ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
         : tf < 60 ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: tz })
         : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: tz });
-      g.fillStyle = '#6c7393';
+      g.fillStyle = '#93805c';
       g.fillText(txt, Math.min(cw - 30, Math.max(30, X(i))), H - padB / 2);
-      g.strokeStyle = 'rgba(120,130,170,.05)';
+      g.strokeStyle = 'rgba(214,170,90,.06)';
       g.beginPath(); g.moveTo(X(i), padT); g.lineTo(X(i), H - padB); g.stroke();
     }
     g.textAlign = 'left';
@@ -150,7 +150,7 @@ export function createCandleChart(host) {
       g.setLineDash([]);
       const pv = lo + ((padT + ch - hover.y) / ch) * (hi - lo);
       if (hover.y > padT && hover.y < padT + ch) {
-        g.fillStyle = '#2a3150';
+        g.fillStyle = '#3a2a10';
         g.fillRect(cw + 2, hover.y - 9, padR - 4, 18);
         g.fillStyle = '#fff';
         g.fillText(fmt(pv * scale), cw + 6, hover.y);

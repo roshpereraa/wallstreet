@@ -7,64 +7,8 @@ const mk = (w, h) => Object.assign(document.createElement('canvas'), { width: w,
 let seed = 7;
 export const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 
-export function carpetCanvas(tint = '#1c2330') {
-  const c = mk(256, 256), g = c.getContext('2d');
-  g.fillStyle = tint;
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 4000; i++) {
-    g.fillStyle = `rgba(255,255,255,${rand() * 0.035})`;
-    g.fillRect(rand() * 256, rand() * 256, 1, 1);
-  }
-  g.strokeStyle = 'rgba(255,255,255,.04)';
-  g.lineWidth = 2;
-  g.strokeRect(0, 0, 256, 256);
-  return c;
-}
-
-export function skylineCanvas() {
-  const c = mk(1024, 256), g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 0, 256);
-  grd.addColorStop(0, '#0b1024');
-  grd.addColorStop(0.6, '#3b2d4d');
-  grd.addColorStop(1, '#d27a45');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 1024, 256);
-  let x = 0;
-  while (x < 1024) {
-    const w = 30 + rand() * 60, h = 60 + rand() * 170;
-    g.fillStyle = `rgb(${14 + rand() * 12},${16 + rand() * 12},${28 + rand() * 14})`;
-    g.fillRect(x, 256 - h, w, h);
-    for (let wy = 256 - h + 6; wy < 250; wy += 9) for (let wx = x + 4; wx < x + w - 4; wx += 7) {
-      if (rand() < 0.35) { g.fillStyle = `rgba(255,${200 + rand() * 40},140,${0.4 + rand() * 0.5})`; g.fillRect(wx, wy, 3, 4); }
-    }
-    x += w + 2;
-  }
-  return c;
-}
-
-export function signPlate(text, color, sub) {
-  const c = mk(1200, 200), g = c.getContext('2d');
-  g.fillStyle = '#0a0b0e';
-  g.fillRect(0, 0, 1200, 200);
-  g.strokeStyle = color;
-  g.lineWidth = 6;
-  g.strokeRect(8, 8, 1184, 184);
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillStyle = color;
-  g.shadowColor = color;
-  g.shadowBlur = 24;
-  g.font = '700 96px "Cormorant Garamond", Georgia, serif';
-  g.fillText(text.toUpperCase(), 600, 88);
-  g.shadowBlur = 0;
-  g.globalAlpha = 0.75;
-  g.font = '500 26px "IBM Plex Mono", monospace';
-  g.fillText(sub, 600, 160);
-  return c;
-}
-
 // Synthwave floor: dark tiles with faint neon grid lines
-export function gridFloor(line = '#ff3ea5', bg = '#0c0818') {
+export function gridFloor(line = '#d9a441', bg = '#120c06') {
   const c = mk(256, 256), g = c.getContext('2d');
   g.fillStyle = bg;
   g.fillRect(0, 0, 256, 256);
@@ -73,43 +17,103 @@ export function gridFloor(line = '#ff3ea5', bg = '#0c0818') {
     g.fillRect(rand() * 256, rand() * 256, 1, 1);
   }
   g.strokeStyle = line;
-  g.globalAlpha = 0.35;
+  g.globalAlpha = 0.28;
   g.lineWidth = 3;
   g.strokeRect(0, 0, 256, 256);
+  const sheen = g.createLinearGradient(0, 0, 256, 256); // polished stone
+  sheen.addColorStop(0, 'rgba(255,210,130,.06)');
+  sheen.addColorStop(0.5, 'rgba(255,210,130,0)');
+  sheen.addColorStop(1, 'rgba(255,210,130,.05)');
+  g.globalAlpha = 1;
+  g.fillStyle = sheen;
+  g.fillRect(0, 0, 256, 256);
   return c;
 }
 
-// Rainy neon city for the windows
-export function neonSkyline() {
-  const c = mk(1024, 384), g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 0, 384);
-  grd.addColorStop(0, '#07051a');
-  grd.addColorStop(0.55, '#2a0f45');
-  grd.addColorStop(1, '#ff3ea5');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 1024, 384);
-  let x = 0;
-  while (x < 1024) {
-    const w = 26 + rand() * 60, h = 90 + rand() * 250;
-    g.fillStyle = `rgb(${10 + rand() * 12},${8 + rand() * 10},${26 + rand() * 20})`;
-    g.fillRect(x, 384 - h, w, h);
-    for (let wy = 384 - h + 8; wy < 378; wy += 10) for (let wx = x + 4; wx < x + w - 4; wx += 8) {
-      if (rand() < 0.3) {
-        g.fillStyle = rand() < 0.5 ? `rgba(45,226,255,${0.35 + rand() * 0.5})` : `rgba(255,62,165,${0.35 + rand() * 0.5})`;
-        g.fillRect(wx, wy, 3, 4);
+// Golden-hour city for the windows: hazy low sun, dark towers, warm lit windows
+export function goldenSkyline() {
+  const c = mk(1024, 512), g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 512);
+  sky.addColorStop(0, '#2a1a08');
+  sky.addColorStop(0.35, '#8a5a17');
+  sky.addColorStop(0.62, '#e0a13a');
+  sky.addColorStop(0.82, '#ffd27a');
+  sky.addColorStop(1, '#ffe9b8');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, 1024, 512);
+
+  const sun = g.createRadialGradient(660, 300, 10, 660, 300, 340);
+  sun.addColorStop(0, 'rgba(255,245,215,1)');
+  sun.addColorStop(0.35, 'rgba(255,196,90,.45)');
+  sun.addColorStop(1, 'rgba(255,170,60,0)');
+  g.fillStyle = sun;
+  g.fillRect(0, 0, 1024, 512);
+
+  const layers = [
+    { alpha: 0.3, min: 70, max: 150, w: [40, 110], tint: '#7a5626', lit: false },
+    { alpha: 0.55, min: 100, max: 200, w: [30, 90], tint: '#4a3214', lit: false },
+    { alpha: 1, min: 120, max: 250, w: [26, 74], tint: '#1a1006', lit: true },
+  ];
+  for (const layer of layers) {
+    let x = -20;
+    g.globalAlpha = layer.alpha;
+    while (x < 1044) {
+      const w = layer.w[0] + rand() * (layer.w[1] - layer.w[0]);
+      const h = layer.min + rand() * (layer.max - layer.min);
+      g.fillStyle = layer.tint;
+      g.fillRect(x, 512 - h, w, h);
+      if (layer.lit) {
+        for (let wy = 512 - h + 10; wy < 506; wy += 11) for (let wx = x + 5; wx < x + w - 5; wx += 9) {
+          if (rand() < 0.34) {
+            g.fillStyle = `rgba(255,${Math.round(196 + rand() * 50)},${Math.round(90 + rand() * 60)},${0.35 + rand() * 0.55})`;
+            g.fillRect(wx, wy, 4, 5);
+          }
+        }
+        if (rand() < 0.3) {
+          g.fillStyle = layer.tint;
+          g.fillRect(x + w / 2 - 1, 512 - h - 26, 2, 26);
+        }
       }
+      x += w + 3 + rand() * 10;
     }
-    if (rand() < 0.25) { // rooftop neon
-      g.fillStyle = rand() < 0.5 ? '#2de2ff' : '#ff3ea5';
-      g.fillRect(x + 4, 384 - h - 4, w - 8, 3);
-    }
-    x += w + 3;
   }
-  g.strokeStyle = 'rgba(180,200,255,.12)'; // rain
-  for (let i = 0; i < 260; i++) {
-    const rx = rand() * 1024, ry = rand() * 384;
-    g.beginPath(); g.moveTo(rx, ry); g.lineTo(rx - 4, ry + 14); g.stroke();
-  }
+  g.globalAlpha = 1;
+  const haze = g.createLinearGradient(0, 200, 0, 512);
+  haze.addColorStop(0, 'rgba(255,190,90,0)');
+  haze.addColorStop(1, 'rgba(255,190,90,.22)');
+  g.fillStyle = haze;
+  g.fillRect(0, 0, 1024, 512);
+  return c;
+}
+
+// House emblem: a glowing chevron, like the logo on the trading-floor screen
+export function chevronLogo(color = '#ffc247') {
+  const c = mk(512, 512), g = c.getContext('2d');
+  const draw = (alpha, blur) => {
+    g.save();
+    g.translate(256, 250);
+    g.globalAlpha = alpha;
+    g.shadowColor = color;
+    g.shadowBlur = blur;
+    const grd = g.createLinearGradient(-150, -120, 150, 150);
+    grd.addColorStop(0, '#ffe8ad');
+    grd.addColorStop(0.5, color);
+    grd.addColorStop(1, '#c98a1e');
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(-150, -120);
+    g.lineTo(-60, -120);
+    g.lineTo(0, -10);
+    g.lineTo(60, -120);
+    g.lineTo(150, -120);
+    g.lineTo(0, 130);
+    g.closePath();
+    g.fill();
+    g.restore();
+  };
+  draw(0.5, 70);
+  draw(0.9, 30);
+  draw(1, 8);
   return c;
 }
 
@@ -167,21 +171,21 @@ export function spark(g, data, x, y, w, h, color, fill = true) {
 }
 
 export function drawLaptop(g, w, h, symbol, q, t) {
-  g.fillStyle = '#0a0616';
+  g.fillStyle = '#0d0904';
   g.fillRect(0, 0, w, h);
-  const col = q?.change >= 0 ? UP : q ? DOWN : '#6b7a90';
-  g.fillStyle = '#1a0f33';
+  const col = q?.change >= 0 ? UP : q ? DOWN : '#9a8258';
+  g.fillStyle = '#241605';
   g.fillRect(0, 0, w, h * 0.17);
   g.font = `600 ${h * 0.11}px "IBM Plex Mono", monospace`;
   g.textBaseline = 'middle';
-  g.fillStyle = '#ffb000';
+  g.fillStyle = '#ffc247';
   g.fillText(label(symbol), w * 0.05, h * 0.09);
   g.textAlign = 'right';
-  g.fillStyle = '#6b7a90';
+  g.fillStyle = '#9a8258';
   g.fillText('LIVE', w * 0.95, h * 0.09);
   g.textAlign = 'left';
   g.font = `600 ${h * 0.17}px "IBM Plex Mono", monospace`;
-  g.fillStyle = '#e8eef6';
+  g.fillStyle = '#fff3dd';
   g.fillText(q ? fmtPrice(q.price, symbol) : 'loading…', w * 0.05, h * 0.31);
   g.font = `500 ${h * 0.11}px "IBM Plex Mono", monospace`;
   g.fillStyle = col;
@@ -192,7 +196,7 @@ export function drawLaptop(g, w, h, symbol, q, t) {
   g.fillRect(((t * 60) % (w * 1.2)) - w * 0.1, h * 0.55, 2, h * 0.38);
 }
 
-export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#040506', size = 0.55 } = {}) {
+export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#0c0703', size = 0.55 } = {}) {
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
   g.font = `600 ${h * size}px "IBM Plex Mono", monospace`;
@@ -208,10 +212,10 @@ export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#040506', siz
   while (x < w) {
     parts.forEach((p, i) => {
       if (x + widths[i] > 0 && x < w) {
-        g.fillStyle = '#ffb000';
+        g.fillStyle = '#ffc247';
         g.fillText(p.s, x, h / 2);
         let cx = x + g.measureText(p.s + ' ').width;
-        g.fillStyle = '#f2f4f7';
+        g.fillStyle = '#fff3dd';
         g.fillText(p.p, cx, h / 2);
         cx += g.measureText(p.p + ' ').width;
         g.fillStyle = p.up == null ? '#777' : p.up ? UP : DOWN;
@@ -223,7 +227,7 @@ export function drawTape(g, w, h, symbols, quotes, offset, { bg = '#040506', siz
 }
 
 export function drawBoard(g, w, h, firm, quotes, t) {
-  g.fillStyle = '#07041a';
+  g.fillStyle = '#0c0703';
   g.fillRect(0, 0, w, h);
   const head = h * 0.13;
   g.fillStyle = firm.color;
@@ -232,7 +236,7 @@ export function drawBoard(g, w, h, firm, quotes, t) {
   g.fillText(firm.name.toUpperCase(), w * 0.02, head * 0.55);
   g.textAlign = 'right';
   g.font = `500 ${head * 0.42}px "IBM Plex Mono", monospace`;
-  g.fillStyle = '#9aa4b2';
+  g.fillStyle = '#c4a877';
   const ny = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   g.fillText(`${firm.desk.toUpperCase()}  ·  NEW YORK ${ny}`, w * 0.98, head * 0.55);
   g.textAlign = 'left';
@@ -243,12 +247,12 @@ export function drawBoard(g, w, h, firm, quotes, t) {
     const q = quotes.get(s);
     const x = (i % cols) * cw, y = top + Math.floor(i / cols) * ch;
     const col = q ? (q.change >= 0 ? UP : DOWN) : '#555';
-    g.fillStyle = '#120a28';
+    g.fillStyle = '#1a1206';
     g.fillRect(x + 6, y + 6, cw - 12, ch - 12);
-    g.fillStyle = '#ffb000';
+    g.fillStyle = '#ffc247';
     g.font = `600 ${ch * 0.15}px "IBM Plex Mono", monospace`;
     g.fillText(label(s), x + 22, y + ch * 0.18);
-    g.fillStyle = '#f2f4f7';
+    g.fillStyle = '#fff3dd';
     g.font = `600 ${ch * 0.2}px "IBM Plex Mono", monospace`;
     g.fillText(q ? fmtPrice(q.price, s) : '···', x + 22, y + ch * 0.4);
     g.fillStyle = col;
@@ -260,6 +264,6 @@ export function drawBoard(g, w, h, firm, quotes, t) {
   });
   g.save();
   g.translate(0, h - tapeH);
-  drawTape(g, w, tapeH, firm.tape, quotes, t * 90, { bg: '#160c30' });
+  drawTape(g, w, tapeH, firm.tape, quotes, t * 90, { bg: '#1c1207' });
   g.restore();
 }

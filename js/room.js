@@ -2,15 +2,17 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DESKS, SHOUTS, trader, label } from './data.js';
 import { person, sit, addPhone, mat, walk } from './avatar.js';
-import { gridFloor, neonSkyline, neonSign, drawBoard, drawLaptop } from './textures.js';
+import { gridFloor, goldenSkyline, chevronLogo, neonSign, drawBoard, drawLaptop } from './textures.js';
 
-// A small neon lo-fi trading room, shown as a cut-away (no ceiling, no front wall):
+// A small gold-lit trading floor, shown as a cut-away (no ceiling, no front wall):
 // the meme coin desk on the left, the stock exchange desk on the right.
 export const RW = 10, RD = 6.5, RH = 4.4;
 
 // every LED tube, neon sign and light strip in the room is white
 const LED = '#ffffff';
 const PINK = LED, CYAN = LED, PURPLE = LED;
+// everything that glows warm — light pools, the house emblem, trim — is gold
+const GOLD = '#ffc247', AMBER = '#ff9f36';
 const neonMat = (color, intensity = 3) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false });
 
 export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
@@ -24,8 +26,8 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   };
 
   // ------------------------------------------------ lights: dim room, coloured pools
-  g.add(new THREE.HemisphereLight('#8f9ad8', '#1a0b24', 0.9));
-  const key = new THREE.DirectionalLight('#c9b8ff', 0.9);
+  g.add(new THREE.HemisphereLight('#ffd9a4', '#140c04', 0.85));
+  const key = new THREE.DirectionalLight('#ffcf8f', 1.15);
   key.position.set(4, 12, 10);
   key.castShadow = !lowPower;
   key.shadow.mapSize.set(1024, 1024);
@@ -33,17 +35,23 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   key.shadow.bias = -0.0008;
   key.shadow.normalBias = 0.04;
   g.add(key, key.target);
-  [[-1, PINK], [1, CYAN]].forEach(([s, c]) => {
-    const l = new THREE.PointLight(c, 13, 13, 1.6);
+  [[-1, GOLD], [1, GOLD]].forEach(([s, c]) => {
+    const l = new THREE.PointLight(c, 16, 14, 1.6);
     l.position.set(s * 5, 3.2, -3);
     g.add(l);
   });
-  const lampLight = new THREE.PointLight('#ffb36b', 6, 6, 1.6);
+  // low sun raking in through the windows
+  [-1, 1].forEach((s) => {
+    const sun = new THREE.DirectionalLight('#ffb457', 0.7);
+    sun.position.set(s * 18, 3.4, 4);
+    g.add(sun, sun.target);
+  });
+  const lampLight = new THREE.PointLight('#ffc27a', 6, 6, 1.6);
   lampLight.position.set(0, 1.6, -5.2);
   g.add(lampLight);
 
   // ------------------------------------------------ shell
-  [[-1, PINK, '#0d0819'], [1, CYAN, '#080b1a']].forEach(([s, line, bg]) => {
+  [[-1, '#d9a441', '#120c06'], [1, '#d9a441', '#0f0a05']].forEach(([s, line, bg]) => {
     const t = canvasTex(gridFloor(line, bg));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(5, 6.5);
@@ -53,37 +61,45 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     f.receiveShadow = true;
     g.add(f);
   });
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.5, 0.5, RD * 2 + 0.5), mat('#07050f'));
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.5, 0.5, RD * 2 + 0.5), mat('#0a0704'));
   slab.position.y = -0.26;
   g.add(slab);
   // neon edge around the cut-away floor
-  tube(RW * 2 + 0.5, 0.05, 0.05, PURPLE, 0, 0.01, RD + 0.26, 2.5);
-  tube(0.05, 0.05, RD * 2 + 0.5, PINK, -RW - 0.26, 0.01, 0, 2.5);
-  tube(0.05, 0.05, RD * 2 + 0.5, CYAN, RW + 0.26, 0.01, 0, 2.5);
+  tube(RW * 2 + 0.5, 0.05, 0.05, GOLD, 0, 0.01, RD + 0.26, 2.5);
+  tube(0.05, 0.05, RD * 2 + 0.5, GOLD, -RW - 0.26, 0.01, 0, 2.5);
+  tube(0.05, 0.05, RD * 2 + 0.5, GOLD, RW + 0.26, 0.01, 0, 2.5);
   // centre divider line
-  tube(0.04, 0.012, RD * 2, PURPLE, 0, 0.01, 0, 1.6);
+  tube(0.04, 0.012, RD * 2, GOLD, 0, 0.01, 0, 1.6);
 
-  const wallM = mat('#130d24', { roughness: 0.85 });
+  const wallM = mat('#171009', { roughness: 0.85 });
   const back = new THREE.Mesh(new THREE.BoxGeometry(RW * 2 + 0.5, RH, 0.25), wallM);
   back.position.set(0, RH / 2, -RD - 0.13);
   back.receiveShadow = true;
   g.add(back);
-  tube(RW * 2 + 0.5, 0.06, 0.06, PURPLE, 0, RH, -RD + 0.02, 3);
+  tube(RW * 2 + 0.5, 0.06, 0.06, GOLD, 0, RH, -RD + 0.02, 3);
 
-  const skyTex = canvasTex(neonSkyline());
-  [[-1, PINK], [1, CYAN]].forEach(([s, color]) => {
+  const skyTex = canvasTex(goldenSkyline());
+  [[-1, GOLD], [1, GOLD]].forEach(([s, color]) => {
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.25, RH, RD * 2 + 0.25), wallM);
     side.position.set(s * (RW + 0.13), RH / 2, 0);
     side.receiveShadow = true;
     g.add(side);
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 2.4), new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false }));
-    win.position.set(s * (RW - 0.01), 2.5, 0.8);
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 3.6), new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false }));
+    win.position.set(s * (RW - 0.01), 2.4, 0.4);
     win.rotation.y = -s * Math.PI / 2;
     g.add(win);
-    for (const dz of [-3.75, 0, 3.75]) tube(0.05, 2.5, 0.06, '#1b1030', s * (RW - 0.04), 2.5, 0.8 + dz, 0.2);
+    for (const dz of [-5.7, -2.85, 0, 2.85, 5.7]) tube(0.06, 3.7, 0.07, '#100a04', s * (RW - 0.04), 2.4, 0.4 + dz, 0.15);
     tube(0.05, 0.05, RD * 2, color, s * (RW - 0.03), RH, 0, 3);
     tube(0.05, 0.05, RD * 2, color, s * (RW - 0.03), 0.05, 0, 3);
   });
+
+  // ------------------------------------------------ house emblem on the back wall
+  const emblem = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), new THREE.MeshBasicMaterial({ map: canvasTex(chevronLogo(GOLD)), transparent: true, toneMapped: false, depthWrite: false }));
+  emblem.position.set(0, 2.9, -RD + 0.06);
+  g.add(emblem);
+  const emblemLight = new THREE.PointLight(GOLD, 9, 9, 1.8);
+  emblemLight.position.set(0, 2.9, -RD + 1.4);
+  g.add(emblemLight);
 
   // ------------------------------------------------ wall boards + neon signs
   const boards = [];
@@ -91,7 +107,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     const desk = DESKS[kind];
     const c = Object.assign(document.createElement('canvas'), { width: lowPower ? 1024 : 1400, height: lowPower ? 360 : 490 });
     const tex = canvasTex(c);
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 2.6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: '#d8d0ff' }));
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 2.6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: '#ffe7bd' }));
     board.position.set(s * 5, 2.35, -RD + 0.06);
     g.add(board);
     tag(board, 'board', kind);
@@ -105,7 +121,7 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
     tag(sign, 'board', kind);
   });
   // side-wall neon slogans
-  [[-1, 'WAGMI', PINK], [1, 'BUY THE DIP', CYAN]].forEach(([s, text, color]) => {
+  [[-1, 'WAGMI', GOLD], [1, 'BUY THE DIP', GOLD]].forEach(([s, text, color]) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: canvasTex(neonSign(text, color, { backing: false, size: 0.42 })), transparent: true, toneMapped: false, depthWrite: false }));
     m.position.set(s * (RW - 0.03), 4.05, -3.6);
     m.rotation.y = -s * Math.PI / 2;
@@ -116,21 +132,21 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   const radioGroup = new THREE.Group();
   radioGroup.position.set(0, 0, -RD + 0.7);
   g.add(radioGroup);
-  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.6), mat('#3a2340', { roughness: 0.6 }));
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.6), mat('#4a3116', { roughness: 0.6 }));
   cabinet.position.y = 0.4;
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.5), mat('#1a1222', { roughness: 0.4 }));
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.5), mat('#1d1409', { roughness: 0.4 }));
   deck.position.y = 0.85;
   const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.012, 32), mat('#0a0a0c', { roughness: 0.25, metalness: 0.3 }));
   vinyl.position.set(-0.2, 0.91, 0);
-  const labelDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.014, 20), neonMat(PINK, 1.5));
+  const labelDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.014, 20), neonMat(GOLD, 1.5));
   labelDisc.position.copy(vinyl.position).add(new THREE.Vector3(0, 0.002, 0));
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.3), mat('#c9c9d6', { metalness: 0.8, roughness: 0.3 }));
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.3), mat('#e2c98f', { metalness: 0.85, roughness: 0.25 }));
   arm.position.set(0.1, 0.93, -0.02);
   arm.rotation.y = 0.5;
   const speakers = [-0.9, 0.9].map((x) => {
-    const sp = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), mat('#241634'));
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), mat('#2a1c0c'));
     sp.position.set(x, 0.3, 0.05);
-    const cone = new THREE.Mesh(new THREE.CircleGeometry(0.12, 20), neonMat(x < 0 ? PINK : CYAN, 0.8));
+    const cone = new THREE.Mesh(new THREE.CircleGeometry(0.12, 20), neonMat(GOLD, 0.8));
     cone.position.set(0, 0.05, 0.201);
     sp.add(cone);
     radioGroup.add(sp);
@@ -142,12 +158,12 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
 
   const lamp = new THREE.Group();
   lamp.position.set(-1.9, 0, -RD + 0.6);
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.2, 16), mat('#2a1a3a'));
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.2, 16), mat('#33220e'));
   lampBase.position.y = 0.1;
-  const lava = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.45, 6, 16), new THREE.MeshStandardMaterial({ color: '#ff6fd0', emissive: '#ff3ea5', emissiveIntensity: 1.2, transparent: true, opacity: 0.85, toneMapped: false }));
+  const lava = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.45, 6, 16), new THREE.MeshStandardMaterial({ color: '#ffcf85', emissive: AMBER, emissiveIntensity: 1.2, transparent: true, opacity: 0.85, toneMapped: false }));
   lava.position.y = 0.55;
   const blobs = [0, 1, 2].map(() => {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), neonMat('#ffd166', 2));
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), neonMat('#fff0c2', 2));
     lava.add(b);
     return b;
   });
@@ -156,10 +172,10 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
 
   const plant = new THREE.Group();
   plant.position.set(1.9, 0, -RD + 0.6);
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.36, 16), mat('#5b2e6e'));
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.36, 16), mat('#6b4a1c'));
   pot.position.y = 0.18;
   plant.add(pot);
-  const leafM = mat('#3fbf7f', { roughness: 0.7 });
+  const leafM = mat('#3d7a4c', { roughness: 0.7 });
   for (let i = 0; i < 9; i++) {
     const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.6, 4), leafM);
     const a = (i / 9) * Math.PI * 2, tilt = 0.25 + (i % 3) * 0.15;
@@ -173,10 +189,10 @@ export function buildRoom({ canvasTex, lowPower, tag, onShout }) {
   const rowsZ = [1.6, -2.4];
   const perRow = 2, seatGap = 3, segLen = perRow * seatGap;
 
-  const deskM = mat('#1d1433', { roughness: 0.35, metalness: 0.3 });
-  const legM = mat('#2a2340', { metalness: 0.6, roughness: 0.4 });
-  const laptopM = mat('#9a93b8', { metalness: 0.7, roughness: 0.3 });
-  const chairM = mat('#221733', { roughness: 0.6 });
+  const deskM = mat('#20160a', { roughness: 0.3, metalness: 0.35 });
+  const legM = mat('#4a3a1c', { metalness: 0.75, roughness: 0.35 });
+  const laptopM = mat('#b9a273', { metalness: 0.8, roughness: 0.28 });
+  const chairM = mat('#151008', { roughness: 0.6 });
   const geo = {
     lapBase: new THREE.BoxGeometry(0.4, 0.025, 0.28),
     lapLid: new THREE.BoxGeometry(0.4, 0.27, 0.014),

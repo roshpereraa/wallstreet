@@ -21,10 +21,10 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#07040f');
+scene.background = new THREE.Color('#120b04');
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 200);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 function canvasTex(c) {
@@ -50,13 +50,13 @@ scene.add(room.group);
 const composer = lowPower ? null : new EffectComposer(renderer);
 if (composer) {
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.42, 0.5, 0.9));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.55, 0.85));
   composer.addPass(new OutputPass());
 }
 
 // ---------------------------------------------------------------- overview camera
 // A fixed view of the whole floor that drifts gently; the pointer adds a little parallax.
-const LOOK = new THREE.Vector3(0, 1.3, -1.4);
+const LOOK = new THREE.Vector3(0, 1.95, -1.9);
 const view = { dist: 30, height: 15 };
 function fitView() {
   const a = innerWidth / innerHeight;
@@ -67,7 +67,7 @@ function fitView() {
   const halfW = 11.5, vFov = THREE.MathUtils.degToRad(camera.fov);
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * a);
   view.dist = Math.max(14, halfW / Math.tan(hFov / 2));
-  view.height = view.dist * 0.52;
+  view.height = view.dist * 0.3;
 }
 fitView();
 const pointer = new THREE.Vector2();
